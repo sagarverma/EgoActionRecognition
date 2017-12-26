@@ -8,25 +8,28 @@ from torch.autograd import Variable
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+from folder import ImagePreloader
 import matplotlib.pyplot as plt
 import time
 import os
 
-from config import GTEA
+from config import Plumbing as DATA
 
 
-mean = GTEA.rgb['mean']
-std = GTEA.rgb['std']
-lr = GTEA.rgb['lr']
-momentum = GTEA.rgb['momentum']
-step_size = GTEA.rgb['step_size']
-gamma = GTEA.rgb['gamma']
-num_epochs = GTEA.rgb['num_epochs']
-data_dir = GTEA.rgb['data_dir']
-num_classes = GTEA.rgb['num_classes']
-batch_size = GTEA.rgb['batch_size']
-weights_dir = '../weights/GTEA/'
-plots_dir = 'plots/GTEA/'
+mean = DATA.rgb['mean']
+std = DATA.rgb['std']
+lr = DATA.rgb['lr']
+momentum = DATA.rgb['momentum']
+step_size = DATA.rgb['step_size']
+gamma = DATA.rgb['gamma']
+num_epochs = DATA.rgb['num_epochs']
+data_dir = DATA.rgb['data_dir']
+train_csv = DATA.rgb['train_csv']
+val_csv = DATA.rgb['val_csv']
+num_classes = DATA.rgb['num_classes']
+batch_size = DATA.rgb['batch_size']
+weights_dir = DATA.rgb['weights_dir']
+plots_dir = DATA.rgb['plots_dir']
 
 def make_weights_for_balanced_classes(images, nclasses):                        
     count = [0] * nclasses                                                      
@@ -43,6 +46,7 @@ def make_weights_for_balanced_classes(images, nclasses):
 
 data_transforms = {
     'train': transforms.Compose([
+        transforms.Resize([250,350])
         transforms.RandomSizedCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -56,7 +60,7 @@ data_transforms = {
     ]),
 }
 
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+image_datasets = {'train': ImagePreloader('../pngs/', train_csv, data_transforms['train']), 'val': ImagePreloader('../pngs/', train_csv, data_transforms['train'])}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes

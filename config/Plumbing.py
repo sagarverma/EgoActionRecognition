@@ -1,0 +1,15 @@
+rgb = {'mean':[ 0.40266732874509803, 0.40266732874509803,  0.40266732874509803] ,
+ 'std':[ 0.13995157133333333,  0.13995157133333333,  0.13995157133333333],
+ 'lr':0.001,
+ 'momentum':0.9,
+ 'step_size':7,
+ 'gamma':0.1,
+ 'num_epochs':500,
+ 'data_dir':'',
+ 'num_classes':10,
+ 'batch_size':128,
+ 'train_csv':'../train_plumbing.csv',
+ 'val_csv':'../val_plumbing.csv',
+ 'weights_dir':'../weights/RGB/',
+ 'plots_dir':'../plots/RGB/'
+}

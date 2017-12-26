@@ -7,5 +7,9 @@ rgb = {'mean':[0.485, 0.456, 0.406],
  'num_epochs':500,
  'data_dir':'',
  'num_classes':10,
- 'batch_size':128
+ 'batch_size':128,
+ 'train_csv':'train_gtea.csv',
+ 'val_csv':'val_gtea.csv',
+ 'weights_dir':'../weights/GTEA/',
+ 'plots_dir':'../plots/GTEA/'
 }
