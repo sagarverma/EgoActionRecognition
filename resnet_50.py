@@ -25,6 +25,8 @@ num_epochs = GTEA.rgb['num_epochs']
 data_dir = GTEA.rgb['data_dir']
 num_classes = GTEA.rgb['num_classes']
 batch_size = GTEA.rgb['batch_size']
+weights_dir = '../weights/GTEA/'
+plots_dir = 'plots/GTEA/'
 
 def make_weights_for_balanced_classes(images, nclasses):                        
     count = [0] * nclasses                                                      
@@ -140,13 +142,17 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             plt.plot(range(len(train_loss)),train_loss,label="Train")
             plt.plot(range(len(test_loss)),test_loss,label="Test")
             plt.legend(bbox_to_anchor=(.90, 1), loc=2, borderaxespad=0.)
-            plt.savefig(file_name+"_loss.png")
+            plt.savefig(plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                        str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
+                        '_batch_size_' + str(batch_size) +"_loss.png")
             plt.cla()
             plt.clf()
             plt.plot(range(len(train_acc)),train_acc,label="Train")
             plt.plot(range(len(test_acc)),test_acc,label="Test")
             plt.legend(bbox_to_anchor=(.90, 1), loc=2, borderaxespad=0.)
-            plt.savefig(file_name+"_acc.png")
+            plt.savefig(plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                        str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
+                        '_batch_size_' + str(batch_size) +"_acc.png")
             plt.cla()
             plt.clf()
 
@@ -156,7 +162,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 #best_model_wts = model.state_dict()
-                torch.save(model, 'weights_'+file_name+'_lr_001.pt')
+                torch.save(model, weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                        str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
+                        '_batch_size_' + str(batch_size) + '.pt')
         print()
 
     time_elapsed = time.time() - since
@@ -165,8 +173,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     print('Best val Acc: {:4f}'.format(best_acc))
 
     # load best model weights
-    #model.load_state_dict(best_model_wts)
-    model = torch.load('weights_'+file_name+'_lr_001.pt')
+    model = torch.load(weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                        str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
+                        '_batch_size_' + str(batch_size) + '.pt')
     return model
 
 
@@ -213,7 +222,7 @@ if __name__ == '__main__':
 
     # Parameters of newly constructed modules have requires_grad=True by default
     num_ftrs = model_conv.fc.in_features
-    model_conv.fc = nn.Linear(num_ftrs, 10)
+    model_conv.fc = nn.Linear(num_ftrs, num_classes)
     
     
     if use_gpu:
@@ -223,11 +232,10 @@ if __name__ == '__main__':
 
     # Observe that only parameters of final layer are being optimized as
     # opoosed to before.
-    optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=0.001, momentum=0.9)
-    #optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=0.000001)
+    optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=lr, momentum=momentum)
+    
     # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=7, gamma=.1)
-    #exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=step_size, gamma=gamma)
 
 
     ######################################################################
@@ -240,7 +248,7 @@ if __name__ == '__main__':
     #
 
     model_conv = train_model(model_conv, criterion, optimizer_conv,
-                             exp_lr_scheduler, num_epochs=500)
+                             exp_lr_scheduler, num_epochs=num_epochs)
 
     ######################################################################
     #
