@@ -4,6 +4,7 @@ from PIL import Image
 import os
 import os.path
 import csv
+from random import shuffle 
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 
@@ -77,6 +78,9 @@ class ImagePreloader(data.Dataset):
         
         for row in r:
             images_list.append([row[0],row[1]])
+
+
+        shuffle(images_list)
             
         classes, class_to_idx = find_classes(images_list)
         imgs = make_dataset(root, images_list, class_to_idx)

@@ -5,11 +5,11 @@ rgb = {'mean':[0.485, 0.456, 0.406],
  'step_size':7,
  'gamma':0.1,
  'num_epochs':500,
- 'data_dir':'',
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
  'num_classes':10,
  'batch_size':128,
- 'train_csv':'train_gtea.csv',
- 'val_csv':'val_gtea.csv',
- 'weights_dir':'../weights/GTEA/',
- 'plots_dir':'../plots/GTEA/'
+ 'train_csv':'train_label_Gtea.CSV',
+ 'val_csv':'test_label_Gtea.CSV',
+ 'weights_dir':'weights/RGB/',
+ 'plots_dir':'plots/RGB/'
 }

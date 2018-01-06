@@ -12,8 +12,8 @@ from folder import ImagePreloader
 import matplotlib.pyplot as plt
 import time
 import os
-from config import EGTEA as DATA
-
+#from config import EGTEA as DATA
+from config import GTEA as DATA
 
 mean = DATA.rgb['mean']
 std = DATA.rgb['std']
@@ -30,6 +30,7 @@ batch_size = DATA.rgb['batch_size']
 weights_dir = DATA.rgb['weights_dir']
 plots_dir = DATA.rgb['plots_dir']
 
+
 def make_weights_for_balanced_classes(images, nclasses):                        
     count = [0] * nclasses                                                      
     for item in images:                                                         
@@ -45,7 +46,7 @@ def make_weights_for_balanced_classes(images, nclasses):
 
 data_transforms = {
     'train': transforms.Compose([
-        transforms.Resize([340,440]),
+        transforms.CenterCrop([280,450]),
         transforms.RandomSizedCrop(224),
         transforms.Resize([300,300]),
         transforms.RandomHorizontalFlip(),
@@ -53,7 +54,7 @@ data_transforms = {
         transforms.Normalize(mean, std)
     ]),
     'val': transforms.Compose([
-        transforms.Resize([340,440]),
+        transforms.CenterCrop([280,450]),
         transforms.CenterCrop(224),
         transforms.Resize([300,300]),
         transforms.ToTensor(),

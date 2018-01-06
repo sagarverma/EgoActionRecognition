@@ -49,9 +49,6 @@ for i=1:total_sub-7
     end
     fclose(fid);
 end
-[~,NoS]=size(cell_temp_sub_path);
-indexing=rand()
-
 struct_CSV(1).Path=cell_temp_sub_path';
 struct_CSV(1).Label=cell_label';
 struct2csv(struct_CSV, 'train_label_Gtea.CSV');
