@@ -1,0 +1,38 @@
+clc;
+clear;
+f = fopen('/media/Drive2/sagar/EGTEA_Gaze_Plus/action_annotation/train_split1.txt', 'r');
+videos = textscan(f, '%s %d32 %d32', 'Delimiter', '');
+videos=videos{:,1};
+
+ff = fopen('/media/Drive2/sagar/EGTEA_Gaze_Plus/action_annotation/verb_idx.txt', 'r');
+verb = textscan(ff, '%s %d32', 'Delimiter', '');
+verb=verb{:,1};
+[NoVe, ~]=size(verb);
+Verbs={};
+for i=1:NoVe
+	temp=strsplit(verb{i,1});
+	Verbs{i,1}=temp{1,1};
+end
+
+source='/media/Drive2/sagar/EGTEA_Gaze_Plus/pngs/';
+[NoV,~]=size(videos);
+cell_path={};
+cell_label={};
+count=0;
+for i=1:NoV
+	temp=videos{i,1};
+	action=strsplit(temp);
+	frames=dir(strcat(source,action{1,1},'/'));
+	[NoF,~]=size(frames);
+	for j=1:NoF
+		count=count+1;
+		cell_path{count}=strcat(action{1,1},frames())
+		cell_label{count}=Verbs{temp{1,2},1};
+	end
+end
+
+
+
+
+
+fclose(f);

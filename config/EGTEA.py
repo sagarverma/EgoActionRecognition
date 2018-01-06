@@ -1,0 +1,15 @@
+rgb = {'mean':[ 0.40266732874509803, 0.40266732874509803,  0.40266732874509803] ,
+ 'std':[ 0.13995157133333333,  0.13995157133333333,  0.13995157133333333],
+ 'lr':0.001,
+ 'momentum':0.9,
+ 'step_size':7,
+ 'gamma':0.1,
+ 'num_epochs':500,
+ 'data_dir':'/media/Drive2/sagar/EGTEA_Gaze_Plus/',
+ 'num_classes':19,
+ 'batch_size':256,
+ 'train_csv':'train_label_EGtea.CSV',
+ 'val_csv':'test_label_EGtea.CSV',
+ 'weights_dir':'weights/RGB/',
+ 'plots_dir':'plots/RGB/'
+}

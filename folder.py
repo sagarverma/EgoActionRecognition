@@ -71,12 +71,12 @@ class ImagePreloader(data.Dataset):
     def __init__(self, root, csv_file, transform=None, target_transform=None,
                  loader=default_loader):
                      
-        r = csv.reader(open(csv_file), 'r')
+        r = csv.reader(open(csv_file, 'r'), delimiter=',')
     
         images_list = []
         
         for row in r:
-            images_list.append(row)
+            images_list.append([row[0],row[1]])
             
         classes, class_to_idx = find_classes(images_list)
         imgs = make_dataset(root, images_list, class_to_idx)

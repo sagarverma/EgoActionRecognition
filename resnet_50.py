@@ -12,8 +12,7 @@ from folder import ImagePreloader
 import matplotlib.pyplot as plt
 import time
 import os
-
-from config import Plumbing as DATA
+from config import EGTEA as DATA
 
 
 mean = DATA.rgb['mean']
@@ -46,21 +45,23 @@ def make_weights_for_balanced_classes(images, nclasses):
 
 data_transforms = {
     'train': transforms.Compose([
-        transforms.Resize([250,350])
+        transforms.Resize([340,440]),
         transforms.RandomSizedCrop(224),
+        transforms.Resize([300,300]),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean, std)
     ]),
     'val': transforms.Compose([
-        transforms.Scale(256),
+        transforms.Resize([340,440]),
         transforms.CenterCrop(224),
+        transforms.Resize([300,300]),
         transforms.ToTensor(),
         transforms.Normalize(mean, std)
     ]),
 }
 
-image_datasets = {'train': ImagePreloader('../pngs/', train_csv, data_transforms['train']), 'val': ImagePreloader('../pngs/', train_csv, data_transforms['train'])}
+image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv, data_transforms['train']), 'val': ImagePreloader(data_dir + 'pngs/', data_dir + val_csv, data_transforms['val'])}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
@@ -111,6 +112,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
                 optimizer.zero_grad()
 
                 # forward
+                #print (inputs.size())
+                
                 outputs = model(inputs)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
@@ -146,7 +149,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             plt.plot(range(len(train_loss)),train_loss,label="Train")
             plt.plot(range(len(test_loss)),test_loss,label="Test")
             plt.legend(bbox_to_anchor=(.90, 1), loc=2, borderaxespad=0.)
-            plt.savefig(plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+            plt.savefig(data_dir + plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) +"_loss.png")
             plt.cla()
@@ -154,7 +157,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             plt.plot(range(len(train_acc)),train_acc,label="Train")
             plt.plot(range(len(test_acc)),test_acc,label="Test")
             plt.legend(bbox_to_anchor=(.90, 1), loc=2, borderaxespad=0.)
-            plt.savefig(plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+            plt.savefig(data_dir + plots_dir + file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) +"_acc.png")
             plt.cla()
@@ -166,7 +169,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 #best_model_wts = model.state_dict()
-                torch.save(model, weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                torch.save(model, data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) + '.pt')
         print()
@@ -177,7 +180,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     print('Best val Acc: {:4f}'.format(best_acc))
 
     # load best model weights
-    model = torch.load(weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+    model = torch.load(data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) + '.pt')
     return model
@@ -214,7 +217,23 @@ def visualize_model(model, num_images=6):
             if images_so_far == num_images:
                 return
 
+class ResNet50Bottom(nn.Module):
+    def __init__(self, original_model):
+        super(ResNet50Bottom, self).__init__()
+        self.features = nn.Sequential(*list(original_model.children())[:-2])
+        self.avg_pool = nn.AvgPool2d(10,1)
+        self.fc = nn.Linear(2048, 10)
+        #self.dropout= nn.Dropout(p=0.25)
 
+    def forward(self, x):
+        x = self.features(x)
+        #print(x.size())
+        x = self.avg_pool(x)
+        #print(x.size())
+        x = x.view(-1, 2048)
+        x = self.fc(x)
+        #x=self.dropout(x)
+        return x
 
 if __name__ == '__main__':
 
@@ -223,7 +242,8 @@ if __name__ == '__main__':
     model_conv = torchvision.models.resnet50(pretrained=True)
     for param in model_conv.parameters():
         param.requires_grad = False
-
+    model_conv = ResNet50Bottom(model_conv)
+    print(model_conv)
     # Parameters of newly constructed modules have requires_grad=True by default
     num_ftrs = model_conv.fc.in_features
     model_conv.fc = nn.Linear(num_ftrs, num_classes)
