@@ -3,7 +3,7 @@ rgb = {'mean':[0.485, 0.456, 0.406],
  'lr':0.001,
  'momentum':0.9,
  'step_size':7,
- 'gamma':0.1,
+ 'gamma':1,
  'num_epochs':500,
  'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
  'num_classes':10,
@@ -12,4 +12,34 @@ rgb = {'mean':[0.485, 0.456, 0.406],
  'val_csv':'test_label_Gtea.CSV',
  'weights_dir':'weights/RGB/',
  'plots_dir':'plots/RGB/'
+}
+
+rgb_lstm = {'lr':0.01,
+ 'momentum':0.9,
+ 'step_size':20,
+ 'gamma':0.1,
+ 'num_epochs':500,
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTea/rgb_features_as_sequence_11/',
+ 'num_classes':11,
+ 'batch_size':512,
+ 'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_features_sequence_11_train.csv',
+ 'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_features_sequence_11_test.csv',
+ 'weights_dir':'weights/RGB/',
+ 'plots_dir':'plots/RGB/'
+}
+
+flow = {'mean':[0.5, 0.5, 0.5],
+ 'std':[1, 1, 1],
+ 'lr':0.001,
+ 'momentum':0.9,
+ 'step_size':7,
+ 'gamma':1,
+ 'num_epochs':5000,
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
+ 'num_classes':10,
+ 'batch_size':128,
+ 'train_csv':'train_label_Gtea.CSV',
+ 'val_csv':'test_label_Gtea.CSV',
+ 'weights_dir':'weights/FLOW/',
+ 'plots_dir':'plots/FLOW/'
 }
