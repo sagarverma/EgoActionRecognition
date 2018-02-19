@@ -43,29 +43,14 @@ def make_weights_for_balanced_classes(images, nclasses):
         weight[idx] = weight_per_class[val[1]]                                  
     return weight
 
-data_transforms = {
-    'train': transforms.Compose([
-    	transforms.CenterCrop([280,450]),
-        transforms.RandomSizedCrop(224),
-        transforms.Resize(300),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
-    ]),
-    'val': transforms.Compose([
-        #transforms.Scale(256),
-        transforms.CenterCrop([280,450]),
-        transforms.CenterCrop(224),
-        transforms.Resize(300),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
-    ]),
-}
-
-image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv, data_transforms['train']), 'val': ImagePreloader(data_dir + 'pngs/', data_dir + val_csv, data_transforms['val'])}
+image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv), 'val': ImagePreloader(data_dir + 'pngs/', data_dir + val_csv)}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
+
+print(image_datasets['train'].class_to_idx)
+
+exit()
 
 use_gpu = torch.cuda.is_available()
 

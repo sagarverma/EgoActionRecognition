@@ -14,32 +14,37 @@ rgb = {'mean':[0.485, 0.456, 0.406],
  'plots_dir':'plots/RGB/'
 }
 
-rgb_lstm = {'lr':0.01,
+rgb_lstm = {'lr':0.001,
  'momentum':0.9,
  'step_size':20,
  'gamma':0.1,
  'num_epochs':500,
- 'data_dir':'/home/shubham/Egocentric/dataset/GTea/rgb_features_as_sequence_11/',
+ #'data_dir':'/home/shubham/Egocentric/dataset/GTea/rgb_2048_features/',
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTea/pngs/',
  'num_classes':11,
- 'batch_size':512,
- 'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_features_sequence_11_train.csv',
- 'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_features_sequence_11_test.csv',
+ 'batch_size':32,
+ 'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_sequence_11_train.csv',
+ #'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_sequence_11_test.csv',
+ #'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_train.csv',
+ #'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_train_aug_2.csv',
+ 'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_test.csv',
  'weights_dir':'weights/RGB/',
- 'plots_dir':'plots/RGB/'
+ 'plots_dir':'plots/RGB/',
+ 'sequence_length':11
 }
 
 flow = {'mean':[0.5, 0.5, 0.5],
  'std':[1, 1, 1],
  'lr':0.001,
  'momentum':0.9,
- 'step_size':7,
+ 'step_size':200,
  'gamma':1,
  'num_epochs':5000,
  'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
- 'num_classes':10,
+ 'num_classes':11,
  'batch_size':128,
- 'train_csv':'train_label_Gtea.CSV',
- 'val_csv':'test_label_Gtea.CSV',
+ 'train_csv':'train_label_Gtea_flow_11_classes.csv',
+ 'val_csv':'test_label_Gtea_flow_11_classes.csv',
  'weights_dir':'weights/FLOW/',
  'plots_dir':'plots/FLOW/'
 }

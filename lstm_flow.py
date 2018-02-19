@@ -15,7 +15,7 @@ import os
 import torch.utils.data as data
 import torch.nn.functional as F
 from config import GTEA as DATA
-from folder import SequencePreloader, NpySequencePreloader
+from folder2 import SequencePreloader, NpySequencePreloader
 
 mean = DATA.rgb['mean']
 std = DATA.rgb['std']
@@ -38,10 +38,10 @@ class ResNet50Bottom(nn.Module):
     def __init__(self, original_model):
         super(ResNet50Bottom, self).__init__()
         self.Bottom = nn.Sequential(*list(original_model.children())[:-2])
-        self.avg_pool = nn.AvgPool2d(10,1)
+        self.avg_pool = nn.AvgPool2d(7,1)
         
     def forward(self, x):
-        x = x.view(-1,3,300,300)
+        x = x.view(-1,3,224,224)
         x = self.Bottom(x)
         x = self.avg_pool(x)
         x = x.view(-1, sequence_length, 2048)
@@ -73,15 +73,11 @@ class Net(nn.Module):
         self.lstmNet = LSTMNet(input_size, hidden_size)
         
     def forward(self, inp, phase):
-        if phase == 'train':
-            feature_sequence = self.resnet50Bottom(inp)
-            outputs = self.lstmNet(feature_sequence)
-            return outputs
-        else:
-            outputs = self.lstmNet(feature_sequence)
-            return outputs
+        feature_sequence = self.resnet50Bottom(inp)
+        outputs = self.lstmNet(feature_sequence)
+        return outputs
         
-sequence_datasets = {'train': SequencePreloader(mean, std, 'train', data_dir, train_csv), 'val': NpySequencePreloader(data_dir[:-5] + 'rgb_2048_features/', val_csv)}
+sequence_datasets = {'train': SequencePreloader(mean, std, 'train', data_dir, train_csv), 'val': SequencePreloader(mean, std, 'val', data_dir, val_csv)}
 #sequence_datasets = {'train': NpySequencePreloader(data_dir, train_csv), 'val': NpySequencePreloader(data_dir, val_csv)}
 dataloaders = {x: torch.utils.data.DataLoader(sequence_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'val']}
 dataset_sizes = {x: len(sequence_datasets[x]) for x in ['train', 'val']}
@@ -196,7 +192,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
 
     # load best model weights
     #model.load_state_dict(best_model_wts)
-    model = torch.load('weights_' + file_name + '_epoch_' + str(epoch) + '_lr_' + str(lr) + '_' + str(batch_size) + '_' + str(sequence_length) + '.pt')
+    model = torch.load('weights_' + file_name + '_epoch_' + str(epoch) + '_lr_' + str(lr) + '_' + str(batch_size) + '_' + str(sequence_length) + 'cnn_10_class_ctrl_crop.pt')
     return model
 
 
@@ -210,7 +206,7 @@ if __name__ == '__main__':
     #model_conv = torchvision.models.resnet50(pretrained=True)
     
     #model_conv = ResNet50Bottom(model_conv)
-    model_conv=torch.load('/home/shubham/Egocentric/weights/weights_modified_resnet_50_fine_tune_gtea_10_classes_resized_to_300_by_400_lr_001.pt')
+    model_conv=torch.load('/home/shubham/Egocentric/weights/weights_resnet_50_fine_tune_gtea_10_classes_ctrl_crop_lr_001.pt')
     for param in model_conv.parameters():
         param.requires_grad = False
         

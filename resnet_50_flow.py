@@ -48,6 +48,8 @@ import time
 import os
 from config import GTEA as DATA
 from folder import ImagePreloader
+import random
+import cv2
 
 mean = DATA.flow['mean']
 std = DATA.flow['std']
@@ -103,27 +105,56 @@ def make_weights_for_balanced_classes(images, nclasses):
         weight[idx] = weight_per_class[val[1]]                                  
     return weight
 
+class HumaraFlipJoNaHogaFlop(object):
+    """Horizontally flip the given PIL Image randomly with a probability of 0.5."""
+
+    def __call__(self, img):
+        """
+        Args:
+            img (PIL Image): Image to be flipped.
+        Returns:
+            PIL Image: Randomly flipped image.
+        """
+        
+        if random.random() < 0.5:   
+            img = np.asarray(img)
+            img = img[:, ::-1, :]  # flip for mirrors
+            rgb = cv2.merge([255-img[:,:,0],img[:,:,1],img[:,:,2]])
+            
+            return rgb
+        return img
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
+transformer = io.Transformer({'data': (1, 3, 300, 300)})
+transformer.set_transpose('data', (2, 0, 1))
+transformer.set_mean('data', np.array([128, 128, 128]))
+transformer.set_raw_scale('data', 255)
+transformer.set_channel_swap('data', (2, 1, 0))
+transformer.set_is_flow('data', True)
+
+trans = io.Transformer({'data': (1, 3, 300, 300)})
+trans.set_transpose('data', (2, 0, 1))
+trans.set_mean('data', np.array([128, 128, 128]))
+trans.set_raw_scale('data', 255)
+trans.set_channel_swap('data', (2, 1, 0))
+
 data_transforms = {
     'train': transforms.Compose([
-    	transforms.CenterCrop([280,450]),
-        transforms.RandomSizedCrop(224),
-        transforms.Resize(300),
-        #transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
+        transforms.RandomCrop(300),
+        transformer.preprocess(),
+        transforms.ToTensor()
     ]),
     'val': transforms.Compose([
-        #transforms.Scale(256),
-        transforms.CenterCrop([280,450]),
-        transforms.CenterCrop(224),
-        transforms.Resize(300),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
+        transforms.CenterCrop(300),
+        trans.preprocess(),
+        transforms.ToTensor()
     ]),
 }
 
 
-image_datasets = {'train': ImagePreloader(data_dir + 'brox_flow/', data_dir + train_csv, data_transforms['train']), 'val': ImagePreloader(data_dir + 'brox_flow/', data_dir + val_csv, data_transforms['val'])}
+image_datasets = {'train': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + train_csv, data_transforms['train'], loader=load_image_for_flow), 'val': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + val_csv, data_transforms['val'], loaded=load_image_for_flow)}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
@@ -301,8 +332,8 @@ class ResNet50Bottom(nn.Module):
     def __init__(self, original_model):
         super(ResNet50Bottom, self).__init__()
         self.features = nn.Sequential(*list(original_model.children())[:-2])
-        self.avg_pool = nn.AvgPool2d(10,1)
-        self.fc = nn.Linear(2048, 10)
+        self.avg_pool = nn.AvgPool2d(7,1)
+        self.fc = nn.Linear(2048, num_classes)
         #self.dropout= nn.Dropout(p=0.25)
 
     def forward(self, x):
@@ -320,8 +351,8 @@ if __name__ == '__main__':
     file_name = __file__.split('/')[-1].split('.')[0]
     print (file_name)
     model_conv = torchvision.models.resnet50(pretrained=True)
-    for param in model_conv.parameters():
-        param.requires_grad = False
+    #for param in model_conv.parameters():
+    #    param.requires_grad = False
     model_conv = ResNet50Bottom(model_conv)
     print(model_conv)
     

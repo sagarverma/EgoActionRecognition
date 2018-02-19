@@ -7,6 +7,10 @@ import os.path
 import csv
 from random import shuffle 
 import numpy as np
+import random
+from torchvision.transforms import functional
+from torch.autograd import Variable
+
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
 
@@ -35,7 +39,18 @@ def find_classes(images_list):
             
     return classes.keys(), classes
 
-
+def make_seq_dataset(dir, sequence_list, class_to_idx):
+    sequences = []
+    
+    for seq in sequence_list:
+        sequence = []
+        for image in seq[0]:
+            sequence.append(dir + image)
+        
+        sequences.append((sequence, class_to_idx[seq[1]]))
+        
+    return sequences
+    
 def make_dataset(dir, images_list, class_to_idx):
     images = []
     
@@ -50,18 +65,47 @@ def pil_loader(path):
     with open(path, 'rb') as f:
         img = Image.open(f)
         return img.convert('RGB')
+        
+        
+def npy_seq_loader(seq):
+    out = []
+    
+    for s in seq:
+        out.append(np.load(s))
+        
+    out = np.asarray(out)
+        
+    return out
 
-def sequence_loader(path):
-    seq = np.load(path)
-    if seq.shape[0] < 11:
-        curr_shape = seq.shape[0]
-        for i in range(0,11-curr_shape):
-            seq = np.append(seq, [seq[-1]], axis=0)
+def sequence_loader(mean, std, split, seq):
+    if split == 'train':
+        
+        irand = random.randint(0, 280 - 224)
+        jrand = random.randint(0, 450 - 224)
+        flip = random.random()
+        batch = []
+        for path in seq:
+            img = Image.open(path)
+            img = img.convert('RGB')
+            img = functional.center_crop(img, (280, 450))
+            #random crop
+            img = functional.crop(img, irand, jrand, 224, 224)
+            #resize
+            img = functional.resize(img, 300)
+            #horizontal flip
+            if flip < 0.5:
+                img = functional.hflip(img)
+            #to_tensor
+            tensor = functional.to_tensor(img)
+            #normalize
+            tensor = functional.normalize(tensor, mean, std)
+            batch.append(tensor)
     
-    seq = torch.from_numpy(seq)  
-    return seq
-    
-    
+        batch = torch.stack(batch)
+        #print outputs.shape
+        
+        return batch
+        
 def accimage_loader(path):
     import accimage
     try:
@@ -70,6 +114,11 @@ def accimage_loader(path):
         # Potentially a decoding problem, fall back to PIL.Image
         return pil_loader(path)
 
+def load_image_for_flow(imgfile):
+    image = io.load_image(imgfile)
+    #samples = caffe.io.oversample([image,[227,227])
+    
+    return image
 
 def default_loader(path):
     from torchvision import get_image_backend
@@ -77,6 +126,7 @@ def default_loader(path):
         return accimage_loader(path)
     else:
         return pil_loader(path)
+
 
 
 class ImagePreloader(data.Dataset):
@@ -130,7 +180,7 @@ class ImagePreloader(data.Dataset):
         
 class SequencePreloader(data.Dataset):
 
-    def __init__(self, root, csv_file, transform=None, target_transform=None,
+    def __init__(self, mean, std, split, root, csv_file, transform=None, target_transform=None,
                  loader=sequence_loader):
                      
         r = csv.reader(open(csv_file, 'r'), delimiter=',')
@@ -138,13 +188,13 @@ class SequencePreloader(data.Dataset):
         sequence_list = []
         
         for row in r:
-            sequence_list.append([row[0],row[1]])
+            sequence_list.append([row[0:-1],row[-1]])
 
 
         #shuffle(images_list)
             
         classes, class_to_idx = find_classes(sequence_list)
-        seqs = make_dataset(root, sequence_list, class_to_idx)
+        seqs = make_seq_dataset(root, sequence_list, class_to_idx)
         if len(seqs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
@@ -156,7 +206,10 @@ class SequencePreloader(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.loader = loader
-
+        self.mean = mean
+        self.std = std
+        self.split = split
+        
     def __getitem__(self, index):
         """
         Args:
@@ -166,7 +219,7 @@ class SequencePreloader(data.Dataset):
             tuple: (image, target) where target is class_index of the target class.
         """
         path, target = self.seqs[index]
-        seq = self.loader(path)
+        seq = self.loader(self.mean, self.std, self.split, path)
         if self.transform is not None:
             seq = self.transform(seq)
         if self.target_transform is not None:
@@ -176,3 +229,46 @@ class SequencePreloader(data.Dataset):
 
     def __len__(self):
         return len(self.seqs)
+        
+        
+class NpySequencePreloader(data.Dataset):
+
+    def __init__(self, root, csv_file):
+                     
+        r = csv.reader(open(csv_file, 'r'), delimiter=',')
+    
+        sequence_list = []
+        
+        for row in r:
+            sequence_list.append([row[0:-1],row[-1]])
+
+
+        #shuffle(images_list)
+            
+        classes, class_to_idx = find_classes(sequence_list)
+        seqs = make_seq_dataset(root, sequence_list, class_to_idx)
+        if len(seqs) == 0:
+            raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
+                               "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
+
+        self.root = root
+        self.seqs = seqs
+        self.classes = classes
+        self.class_to_idx = class_to_idx
+        self.loader = npy_seq_loader
+        
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is class_index of the target class.
+        """
+        paths, target = self.seqs[index]
+        seq = self.loader(paths)
+        return seq, target
+
+    def __len__(self):
+        return len(self.seqs)
+        
