@@ -1,6 +1,6 @@
 import torch.utils.data as data
 import torch
-
+import sys
 from PIL import Image
 import os
 import os.path
@@ -11,10 +11,7 @@ import random
 from torchvision.transforms import functional
 from torch.autograd import Variable
 
-
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
-
-
 def is_image_file(filename):
     """Checks if a file is an image.
 
@@ -39,15 +36,15 @@ def find_classes(images_list):
             
     return classes.keys(), classes
 
-def make_seq_dataset(dir, sequence_list, class_to_idx):
+def make_seq_dataset(data_png_dir, sequence_list):
     sequences = []
     
     for seq in sequence_list:
         sequence = []
         for image in seq[0]:
-            sequence.append(dir + image)
+            sequence.append(data_png_dir + image)
         
-        sequences.append((sequence, class_to_idx[seq[1]]))
+        sequences.append((sequence, seq[1]))
         
     return sequences
     
@@ -55,7 +52,7 @@ def make_dataset(dir, images_list, class_to_idx):
     images = []
     
     for image in images_list:
-        images.append((dir + image[0], class_to_idx[image[1]]))
+        images.append((dir + image[0], int(image[1])))
 
     return images
 
@@ -77,34 +74,26 @@ def npy_seq_loader(seq):
         
     return out
 
-def sequence_loader(mean, std, split, seq):
-    if split == 'train':
-        
-        irand = random.randint(0, 280 - 224)
-        jrand = random.randint(0, 450 - 224)
-        flip = random.random()
-        batch = []
-        for path in seq:
-            img = Image.open(path)
-            img = img.convert('RGB')
-            img = functional.center_crop(img, (280, 450))
-            #random crop
-            img = functional.crop(img, irand, jrand, 224, 224)
-            #resize
-            img = functional.resize(img, 300)
-            #horizontal flip
-            if flip < 0.5:
-                img = functional.hflip(img)
-            #to_tensor
-            tensor = functional.to_tensor(img)
-            #normalize
-            tensor = functional.normalize(tensor, mean, std)
-            batch.append(tensor)
+def sequence_loader(seq, mean, std):
+    irand = random.randint(0, 280 - 224)
+    jrand = random.randint(0, 450 - 224)
+    flip = random.random()
+    batch = []
+    for path in seq:
+        img = Image.open(path)
+        img = img.convert('RGB')
+        img = functional.center_crop(img, (280, 450))
+        img = functional.crop(img, irand, jrand, 224, 224)
+        img = functional.resize(img, 300)
+        if flip < 0.5:
+            img = functional.hflip(img)
+        tensor = functional.to_tensor(img)
+        tensor = functional.normalize(tensor, mean, std)
+        batch.append(tensor)
+
+    batch = torch.stack(batch)
     
-        batch = torch.stack(batch)
-        #print outputs.shape
-        
-        return batch
+    return batch
         
 def accimage_loader(path):
     import accimage
@@ -131,7 +120,7 @@ def default_loader(path):
 
 class ImagePreloader(data.Dataset):
 
-    def __init__(self, root, csv_file, transform=None, target_transform=None,
+    def __init__(self, root, csv_file, class_map, transform=None, target_transform=None,
                  loader=default_loader):
                      
         r = csv.reader(open(csv_file, 'r'), delimiter=',')
@@ -144,7 +133,7 @@ class ImagePreloader(data.Dataset):
 
         #shuffle(images_list)
             
-        classes, class_to_idx = find_classes(images_list)
+        classes, class_to_idx = class_map.keys(), class_map
         imgs = make_dataset(root, images_list, class_to_idx)
         if len(imgs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
@@ -180,26 +169,21 @@ class ImagePreloader(data.Dataset):
         
 class SequencePreloader(data.Dataset):
 
-    def __init__(self, mean, std, split, root, csv_file, transform=None, target_transform=None,
-                 loader=sequence_loader):
-                     
-        r = csv.reader(open(csv_file, 'r'), delimiter=',')
-    
+    def __init__(self, mean, std, data_dir, png_dir, csv_file, 
+                    class_map, transform=None, target_transform=None, loader=sequence_loader):
+                        
+        r = csv.reader(open(data_dir + csv_file, 'r'), delimiter=',')
         sequence_list = []
-        
         for row in r:
-            sequence_list.append([row[0:-1],row[-1]])
-
-
-        #shuffle(images_list)
+            sequence_list.append([row[0:-1], int(row[-1])])
             
-        classes, class_to_idx = find_classes(sequence_list)
-        seqs = make_seq_dataset(root, sequence_list, class_to_idx)
+        classes, class_to_idx = class_map.keys(), class_map
+        seqs = make_seq_dataset(data_dir + png_dir, sequence_list)
         if len(seqs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
-        self.root = root
+        self.data_dir = data_dir
         self.seqs = seqs
         self.classes = classes
         self.class_to_idx = class_to_idx
@@ -208,7 +192,6 @@ class SequencePreloader(data.Dataset):
         self.loader = loader
         self.mean = mean
         self.std = std
-        self.split = split
         
     def __getitem__(self, index):
         """
@@ -219,7 +202,7 @@ class SequencePreloader(data.Dataset):
             tuple: (image, target) where target is class_index of the target class.
         """
         path, target = self.seqs[index]
-        seq = self.loader(self.mean, self.std, self.split, path)
+        seq = self.loader(path, self.mean, self.std)
         if self.transform is not None:
             seq = self.transform(seq)
         if self.target_transform is not None:
@@ -233,25 +216,22 @@ class SequencePreloader(data.Dataset):
         
 class NpySequencePreloader(data.Dataset):
 
-    def __init__(self, root, csv_file):
+    def __init__(self, data_dir, features_2048_dir, csv_file, class_map):
                      
-        r = csv.reader(open(csv_file, 'r'), delimiter=',')
+        r = csv.reader(open(data_dir+csv_file, 'r'), delimiter=',')
     
         sequence_list = []
         
         for row in r:
-            sequence_list.append([row[0:-1],row[-1]])
-
-
-        #shuffle(images_list)
+            sequence_list.append([row[0:-1], int(row[-1])])
             
         classes, class_to_idx = find_classes(sequence_list)
-        seqs = make_seq_dataset(root, sequence_list, class_to_idx)
+        seqs = make_seq_dataset(data_dir + features_2048_dir, sequence_list)
         if len(seqs) == 0:
             raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
                                "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
 
-        self.root = root
+        self.data_dir = data_dir
         self.seqs = seqs
         self.classes = classes
         self.class_to_idx = class_to_idx

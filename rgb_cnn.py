@@ -12,51 +12,66 @@ import matplotlib.pyplot as plt
 import time
 import os
 from config import GTEA as DATA
-import sys  
-sys.path.append('/home/shubham/ego_action_recognition/utils')  
-from folder import ImagePreloader
+from utils.folder import ImagePreloader
 
 use_gpu = torch.cuda.is_available()
 
+#Data statistics
 mean = DATA.rgb['mean']
 std = DATA.rgb['std']
+num_classes = DATA.rgb['num_classes']
+class_map = DATA.rgb['class_map']
+
+#Training parameters
 lr = DATA.rgb['lr']
 momentum = DATA.rgb['momentum']
 step_size = DATA.rgb['step_size']
 gamma = DATA.rgb['gamma']
 num_epochs = DATA.rgb['num_epochs']
-data_dir = DATA.rgb['data_dir']
-train_csv = DATA.rgb['train_csv']
-test_csv = DATA.rgb['test_csv']
-num_classes = DATA.rgb['num_classes']
 batch_size = DATA.rgb['batch_size']
-weights_dir = DATA.rgb['weights_dir']
-plots_dir = DATA.rgb['plots_dir']
-class_map = DATA.rgb['class_map']
 data_transforms= DATA.rgb['data_transforms']
 
+#Directory names
+data_dir = DATA.rgb['data_dir']
+weights_dir = DATA.rgb['weights_dir']
+plots_dir = DATA.rgb['plots_dir']
 
-image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv, class_map, data_transforms['train']), 
-                    'test': ImagePreloader(data_dir + 'pngs/', data_dir + test_csv, class_map, data_transforms['test'])}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'test']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
-class_names = image_datasets['train'].classes
+#csv files
+train_csv = DATA.rgb['train_csv']
+test_csv = DATA.rgb['test_csv']
 
-
-
-######################################################################
+class ResNet50Bottom(nn.Module):
+    """
+    Model definition.
+    """
+    def __init__(self, original_model):
+        super(ResNet50Bottom, self).__init__()
+        self.features = nn.Sequential(*list(original_model.children())[:-2])
+        self.avg_pool = nn.AvgPool2d(10,1)
+        self.fc = nn.Linear(2048, num_classes)
+    
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avg_pool(x)
+        x = x.view(-1, 2048)
+        x = self.fc(x)
+        return x
         
 def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
+    """
+        Training model with given criterion, optimizer for num_epochs. 
+    """
     since = time.time()
 
     best_model_wts = model.state_dict()
     best_acc = 0.0
+    
     train_loss = []
     train_acc = []
     test_acc = []
     test_loss = []
+    
     for epoch in range(num_epochs):
-        
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
@@ -72,7 +87,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
 
             for data in dataloaders[phase]:
                 inputs, labels = data
-                
                 if use_gpu:
                     inputs = Variable(inputs.cuda())
                     labels = Variable(labels.cuda())
@@ -120,39 +134,32 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     print('Best test Acc: {:4f}'.format(best_acc))
 
     model = torch.load('weights_'+file_name+'_lr_001.pt')
+    
     return model
 
 
-class ResNet50Bottom(nn.Module):
-    def __init__(self, original_model):
-        super(ResNet50Bottom, self).__init__()
-        self.features = nn.Sequential(*list(original_model.children())[:-2])
-        self.avg_pool = nn.AvgPool2d(10,1)
-        self.fc = nn.Linear(2048, num_classes)
+#Dataload and generator initialization
+image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv, class_map, data_transforms['train']), 
+                    'test': ImagePreloader(data_dir + 'pngs/', data_dir + test_csv, class_map, data_transforms['test'])}
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'test']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
+class_names = image_datasets['train'].classes
 
-    def forward(self, x):
-        x = self.features(x)
-        x = self.avg_pool(x)
-        x = x.view(-1, 2048)
-        x = self.fc(x)
-        return x
+file_name = __file__.split('/')[-1].split('.')[0]
 
-if __name__ == '__main__':
+#Create model and initialize/freeze weights
+model_conv = torchvision.models.resnet50(pretrained=True)
+for param in model_conv.parameters():
+    param.requires_grad = False
+model_conv = ResNet50Bottom(model_conv)
 
-    file_name = __file__.split('/')[-1].split('.')[0]
-    print (file_name)
-    
-    model_conv = torchvision.models.resnet50(pretrained=True)
-    for param in model_conv.parameters():
-        param.requires_grad = False
-    model_conv = ResNet50Bottom(model_conv)
-    print(model_conv)
-    
-    if use_gpu:
-        model_conv = model_conv.cuda()
+if use_gpu:
+    model_conv = model_conv.cuda()
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=lr, momentum=momentum)
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=step_size, gamma=gamma)
-    
-    model_conv = train_model(model_conv, criterion, optimizer_conv, exp_lr_scheduler, num_epochs=num_epochs)
+#Initialize optimizer and loss function
+criterion = nn.CrossEntropyLoss()
+optimizer_conv = optim.SGD(model_conv.fc.parameters(), lr=lr, momentum=momentum)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer_conv, step_size=step_size, gamma=gamma)
+
+#Train model
+model_conv = train_model(model_conv, criterion, optimizer_conv, exp_lr_scheduler, num_epochs=num_epochs)

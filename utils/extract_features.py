@@ -1,23 +1,25 @@
 
 from __future__ import print_function, division
-import shutil
+
+import sys
+sys.path.append('/home/shubham/ego_action_recognition/')
+
+from os import listdir, path, mkdir
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
-import numpy as np
+
 import torchvision
 from torchvision import datasets, models, transforms
 from torchvision.transforms import functional
-import matplotlib.pyplot as plt
-import time
-import os
+
+import numpy as np
+
 from config import GTEA as DATA
-from folder import ImagePreloader
-from os import listdir
-from PIL import Image
-import random
+from folder import ImagePreloader, pil_loader
 
 mean = DATA.rgb['mean']
 std = DATA.rgb['std']
@@ -27,98 +29,55 @@ step_size = DATA.rgb['step_size']
 gamma = DATA.rgb['gamma']
 num_epochs = DATA.rgb['num_epochs']
 data_dir = DATA.rgb['data_dir']
+png_dir = DATA.rgb['png_dir']
+features_2048_dir = DATA.rgb['features_2048_dir']
 train_csv = DATA.rgb['train_csv']
-val_csv = DATA.rgb['val_csv']
+test_csv = DATA.rgb['test_csv']
 num_classes = DATA.rgb['num_classes']
 batch_size = DATA.rgb['batch_size']
 weights_dir = DATA.rgb['weights_dir']
 plots_dir = DATA.rgb['plots_dir']
+class_map = DATA.rgb['class_map']
+data_transforms = DATA.rgb['data_transforms']
 
-def pil_loader(path):
-    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
-    with open(path, 'rb') as f:
-        img = Image.open(f)
-        return img.convert('RGB')
-        
+
 class ResNet50Bottom(nn.Module):
     def __init__(self, original_model):
         super(ResNet50Bottom, self).__init__()
         self.features = nn.Sequential(*list(original_model.children())[:-2])
         self.avg_pool = nn.AvgPool2d(10,1)
-        self.fc = nn.Linear(2048, 10)
-        #self.dropout= nn.Dropout(p=0.25)
+        self.fc = nn.Linear(2048, num_classes)
 
     def forward(self, x):
         x = self.features(x)
-        #print(x.size())
         x = self.avg_pool(x)
-        #print(x.size())
         x = x.view(-1, 2048)
-        #x = self.fc(x)
-        #x=self.dropout(x)
         return x
-
-transofrm = transforms.Compose([
-        transforms.CenterCrop([280,450]),
-        transforms.CenterCrop(224),
-        transforms.Resize(300),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
-    ])
 
 if __name__ == '__main__':
     model_conv = torchvision.models.resnet50(pretrained=True)
     model_conv = ResNet50Bottom(model_conv)
-    model_conv=(torch.load('/home/shubham/Egocentric/weights/weights_modified_resnet_50_fine_tune_gtea_10_classes_resized_to_300_by_400_lr_001.pt'))
-    
+    model_conv = torch.load(data_dir + weights_dir + 'weights_resnet_50_lr_0.001_momentum_0.9_step_size_7_gamma_1_num_classes_10_batch_size_128.pt')
     model_conv = model_conv.cuda()
     
-    root = '/home/shubham/Egocentric/dataset/GTea/pngs/'
-    out = '/home/shubham/Egocentric/dataset/GTea/rgb_2048_features/'
-    videos = listdir(root)
+    trf = data_transforms['test']
     
-    file_names = []
-    
+    videos = listdir(data_dir + png_dir)
     
     for video in videos:
-        if 'S4' not  in video:
-            images = listdir(root + video)
+        
+        if not path.exists(data_dir + features_2048_dir + video):
+            mkdir(data_dir + features_2048_dir + video)
+            
+        images = listdir(data_dir + png_dir + video)
     
-            for image in images:
-                file_names.append(root + video + '/' + image)
-    
-    for a in range(10,20):
-        irand = random.randint(0, 280 - 224)
-        jrand = random.randint(0, 450 - 224)
-        flip = random.random()
-        for i in range(0,len(file_names),512):
+        for image in images:
+            img = pil_loader(data_dir + png_dir + video + '/' + image)
+            inp = torch.stack([trf(img)])            
+            inp = Variable(inp.cuda())
             
-            batch = []
-            batch_fn = []
+            output = model_conv(inp)
+            output = output.data.cpu().numpy()[0]
             
-            for image in file_names[i:i+512]:
-                img = Image.open(image)
-                img = img.convert('RGB')
-                img = functional.center_crop(img, (280, 450))
-                #random crop
-                img = functional.crop(img, irand, jrand, 224, 224)
-                #resize
-                img = functional.resize(img, 300)
-                #horizontal flip
-                if flip < 0.5:
-                    img = functional.hflip(img)
-                #to_tensor
-                tensor = functional.to_tensor(img)
-                #normalize
-                tensor = functional.normalize(tensor, mean, std)
-                batch.append(tensor)
-                batch_fn.append(image)
-            
-            batch = Variable(torch.stack(batch).cuda())
-            outputs = model_conv(batch)
-            outputs = outputs.data.cpu().numpy()
-            print(outputs.shape, a)
-            
-            for j in range(len(batch_fn)):
-                np.save(out + batch_fn[j].split('/')[-2] + '/' + batch_fn[j].split('/')[-1][:-4] + '_' + str(a).zfill(2) + '_.npy', outputs[j])
+            np.save(data_dir + features_2048_dir + video + '/' + image[:-4] + '.npy', output)
         

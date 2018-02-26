@@ -1,17 +1,40 @@
-rgb = {'mean':[0.485, 0.456, 0.406],
- 'std':[0.229, 0.224, 0.225],
- 'lr':0.001,
- 'momentum':0.9,
- 'step_size':7,
- 'gamma':1,
- 'num_epochs':500,
- 'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
- 'num_classes':10,
- 'batch_size':128,
- 'train_csv':'train_label_Gtea.CSV',
- 'val_csv':'test_label_Gtea.CSV',
- 'weights_dir':'weights/RGB/',
- 'plots_dir':'plots/RGB/'
+from torchvision import  transforms
+
+rgb = {
+ 'mean': [0.485, 0.456, 0.406],
+ 'std': [0.229, 0.224, 0.225],
+ 'lr': 0.001,
+ 'momentum': 0.9,
+ 'step_size': 7,
+ 'gamma': 1,
+ 'num_epochs': 500,
+ 'data_dir': '/home/shubham/Egocentric/dataset/GTEA/',
+ 'png_dir': 'pngs/',
+ 'label_dir': 'gtea_labels_cleaned/',
+ 'features_2048_dir' : 'rgb_2048_features/',
+ 'num_classes': 10,
+ 'batch_size': 128,
+ 'train_csv': 'train.csv',
+ 'test_csv': 'test.csv',
+ 'weights_dir': 'weights/RGB/',
+ 'plots_dir': 'plots/RGB/',
+ 'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':9},
+ 'data_transforms' : {
+  'train': transforms.Compose([
+       transforms.CenterCrop([280, 450]),
+       transforms.RandomCrop(224),
+       transforms.Resize(300),
+       transforms.ToTensor(),
+       transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
+       
+   ]),
+   'test': transforms.Compose([
+       transforms.CenterCrop(224),
+       transforms.Resize(300),
+       transforms.ToTensor(),
+       transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
+   ]),
+  }
 }
 
 rgb_lstm = {'lr':0.001,
@@ -19,18 +42,17 @@ rgb_lstm = {'lr':0.001,
  'step_size':20,
  'gamma':0.1,
  'num_epochs':500,
- #'data_dir':'/home/shubham/Egocentric/dataset/GTea/rgb_2048_features/',
- 'data_dir':'/home/shubham/Egocentric/dataset/GTea/pngs/',
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTEA/',
+ 'label_dir': 'gtea_labels_cleaned/',
+ 'features_2048_dir' : 'rgb_2048_features/',
  'num_classes':11,
  'batch_size':32,
- 'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_sequence_11_train.csv',
- #'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_sequence_11_test.csv',
- #'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_train.csv',
- #'train_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_train_aug_2.csv',
- 'val_csv':'/home/shubham/Egocentric/dataset/GTea/rgb_feature_sequence_11_test.csv',
+ 'train_csv':'train_lstm.csv',
+ 'test_csv':'test_lstm.csv',
  'weights_dir':'weights/RGB/',
  'plots_dir':'plots/RGB/',
- 'sequence_length':11
+ 'sequence_length':11,
+ 'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
 flow = {'mean':[0.5, 0.5, 0.5],
@@ -44,7 +66,7 @@ flow = {'mean':[0.5, 0.5, 0.5],
  'num_classes':11,
  'batch_size':128,
  'train_csv':'train_label_Gtea_flow_11_classes.csv',
- 'val_csv':'test_label_Gtea_flow_11_classes.csv',
+ 'test_csv':'test_label_Gtea_flow_11_classes.csv',
  'weights_dir':'weights/FLOW/',
  'plots_dir':'plots/FLOW/'
 }

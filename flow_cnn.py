@@ -60,7 +60,7 @@ gamma = DATA.flow['gamma']
 num_epochs = DATA.flow['num_epochs']
 data_dir = DATA.flow['data_dir']
 train_csv = DATA.flow['train_csv']
-val_csv = DATA.flow['val_csv']
+test_csv = DATA.flow['test_csv']
 num_classes = DATA.flow['num_classes']
 batch_size = DATA.flow['batch_size']
 weights_dir = DATA.flow['weights_dir']
@@ -77,7 +77,7 @@ plots_dir = DATA.flow['plots_dir']
 #
 # The problem we're going to solve today is to train a model to classify
 # **ants** and **bees**. We have about 120 training images each for ants and bees.
-# There are 75 validation images for each class. Usually, this is a very
+# There are 75 testidation images for each class. Usually, this is a very
 # small dataset to generalize upon, if trained from scratch. Since we
 # are using transfer learning, we should be able to generalize reasonably
 # well.
@@ -90,7 +90,7 @@ plots_dir = DATA.flow['plots_dir']
 #    and extract it to the current directory.
 
 # Data augmentation and normalization for training
-# Just normalization for validation
+# Just normalization for testidation
 
 def make_weights_for_balanced_classes(images, nclasses):                        
     count = [0] * nclasses                                                      
@@ -101,8 +101,8 @@ def make_weights_for_balanced_classes(images, nclasses):
     for i in range(nclasses):                                                   
         weight_per_class[i] = N/float(count[i])                                 
     weight = [0] * len(images)                                              
-    for idx, val in enumerate(images):                                          
-        weight[idx] = weight_per_class[val[1]]                                  
+    for idx, test in enumerate(images):                                          
+        weight[idx] = weight_per_class[test[1]]                                  
     return weight
 
 class HumaraFlipJoNaHogaFlop(object):
@@ -146,7 +146,7 @@ data_transforms = {
         transformer.preprocess(),
         transforms.ToTensor()
     ]),
-    'val': transforms.Compose([
+    'test': transforms.Compose([
         transforms.CenterCrop(300),
         trans.preprocess(),
         transforms.ToTensor()
@@ -154,9 +154,9 @@ data_transforms = {
 }
 
 
-image_datasets = {'train': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + train_csv, data_transforms['train'], loader=load_image_for_flow), 'val': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + val_csv, data_transforms['val'], loaded=load_image_for_flow)}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+image_datasets = {'train': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + train_csv, data_transforms['train'], loader=load_image_for_flow), 'test': ImagePreloader(data_dir + 'FusionSeg_flow/', data_dir + test_csv, data_transforms['test'], loaded=load_image_for_flow)}
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'test']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
 class_names = image_datasets['train'].classes
 
 
@@ -165,13 +165,13 @@ class_names = image_datasets['train'].classes
 
 # image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
 #                                           data_transforms[x])
-#                   for x in ['train', 'val']}
+#                   for x in ['train', 'test']}
 # print (image_datasets)
 # dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=128,
 #                                              shuffle=True, num_workers=4)
 # #print (dataloaders)
-#               for x in ['train', 'val']}
-# dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+#               for x in ['train', 'test']}
+# dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
 # class_names = image_datasets['train'].classes
 
 use_gpu = torch.cuda.is_available()
@@ -189,20 +189,20 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     train_acc = []
     test_acc = []
     test_loss = []
-    val_loss = 100
+    test_loss = 100
     ##--------finish--------------##
     for epoch in range(num_epochs):
         
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
-        # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
+        # Each epoch has a training and testidation phase
+        for phase in ['train', 'test']:
             if phase == 'train':
                 scheduler.step()
                 model.train(True)  # Set model to training mode
             else:
-                model.train(False)  # Set model to evaluate mode
+                model.train(False)  # Set model to etestuate mode
 
             running_loss = 0.0
             running_corrects = 0
@@ -275,7 +275,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
 
             ##--------- my code finish--------------##
             # deep copy the model
-            if phase == 'val' and epoch_acc > best_acc:
+            if phase == 'test' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 #best_model_wts = model.state_dict()
                 torch.save(model, data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
@@ -289,7 +289,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     time_elapsed = time.time() - since
     # print('Training complete in {:.0f}m {:.0f}s'.format(
     #     time_elapsed // 60, time_elapsed % 60))
-    # print('Best val Acc: {:4f}'.format(best_acc))
+    # print('Best test Acc: {:4f}'.format(best_acc))
 
     # # load best model weights
     # #model.load_state_dict(best_model_wts)
@@ -308,7 +308,7 @@ def visualize_model(model, num_images=6):
     images_so_far = 0
     fig = plt.figure()
 
-    for i, data in enumerate(dataloaders['val']):
+    for i, data in enumerate(dataloaders['test']):
         inputs, labels = data
         if use_gpu:
             inputs, labels = Variable(inputs.cuda()), Variable(labels.cuda())
@@ -376,7 +376,7 @@ if __name__ == '__main__':
 
 
     ######################################################################
-    # Train and evaluate
+    # Train and etestuate
     # ^^^^^^^^^^^^^^^^^^
     #
     # On CPU this will take about half the time compared to previous scenario.
