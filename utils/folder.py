@@ -63,7 +63,21 @@ def pil_loader(path):
         img = Image.open(f)
         return img.convert('RGB')
         
+
+def npy_video_loader(video_path):
+    out = []
+    
+    frame_features = os.listdir(video_path)
+    frame_features.sort()
+    
+    for feature in frame_features:
+        npy = np.load(video_path + '/' + feature)
+        out.append(npy)
         
+    out = torch.from_numpy(np.asarray(out))
+    
+    return out
+    
 def npy_seq_loader(seq):
     out = []
     
@@ -218,7 +232,7 @@ class NpySequencePreloader(data.Dataset):
 
     def __init__(self, data_dir, features_2048_dir, csv_file, class_map):
                      
-        r = csv.reader(open(data_dir+csv_file, 'r'), delimiter=',')
+        r = csv.reader(open(data_dir + csv_file, 'r'), delimiter=',')
     
         sequence_list = []
         
@@ -251,4 +265,29 @@ class NpySequencePreloader(data.Dataset):
 
     def __len__(self):
         return len(self.seqs)
+
+class NpyVideoPreloader(data.Dataset):
+    
+    def __init__(self, data_dir, features_2048_dir, csv_file, class_map):
+        
+        r = csv.reader(open(data_dir + csv_file, 'r'), delimiter=',')
+        
+        video_list = []
+        
+        for row in r:
+            video_list.append([data_dir + features_2048_dir + row[0], int(row[1])])
+            
+            
+        self.videos = video_list
+        self.loader = npy_video_loader
+        
+    
+    def __getitem__(self, index):
+        video = self.loader(self.videos[index][0])
+        target = self.videos[index][1]
+        
+        return video, target
+        
+    def __len__(self):
+        return len(self.videos)
         

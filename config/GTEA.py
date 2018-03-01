@@ -55,6 +55,23 @@ rgb_lstm = {'lr':0.001,
  'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
+
+rgb_activity = {'lr':0.001,
+ 'momentum':0.9,
+ 'step_size':20,
+ 'gamma':0.1,
+ 'num_epochs':30,
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTEA/',
+ 'features_2048_dir':'rgb_2048_features/',
+ 'num_classes':7,
+ 'batch_size':1,
+ 'train_csv':'train_activity.csv',
+ 'test_csv':'test_activity.csv',
+ 'weights_dir':'weights/RGB/',
+ 'plots_dir':'plots/RGB/',
+ 'class_map':{'Cheese': 0, 'Coffee': 1, 'CofHoney': 2, 'Hotdog': 3, 'Pealate': 4, 'Peanut': 5, 'Tea': 6}
+}
+
 flow = {'mean':[0.5, 0.5, 0.5],
  'std':[1, 1, 1],
  'lr':0.001,
