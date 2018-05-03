@@ -1,3 +1,4 @@
+
 from torchvision import  transforms
 
 rgb = {
@@ -10,8 +11,10 @@ rgb = {
  'num_epochs': 500,
  'data_dir': '/home/shubham/Egocentric/dataset/GTEA/',
  'png_dir': 'pngs/',
+ 'cnn_features_dir':'cnn_features/',
  'label_dir': 'gtea_labels_cleaned/',
  'features_2048_dir' : 'rgb_2048_features/',
+ 'feature_2048_dir_conv_lstm' : 'rgb_10x10x2048_features/', 
  'num_classes': 10,
  'batch_size': 128,
  'train_csv': 'train.csv',
@@ -44,46 +47,46 @@ rgb_lstm = {'lr':0.001,
  'num_epochs':500,
  'data_dir':'/home/shubham/Egocentric/dataset/GTEA/',
  'label_dir': 'gtea_labels_cleaned/',
- 'features_2048_dir' : 'rgb_2048_features/',
+ 'features_2048_dir' : 'cnn_features/',
  'num_classes':11,
- 'batch_size':32,
+ 'batch_size':8,
  'train_csv':'train_lstm.csv',
  'test_csv':'test_lstm.csv',
  'weights_dir':'weights/RGB/',
  'plots_dir':'plots/RGB/',
- 'sequence_length':11,
+ 'sequence_length':100,
  'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
-
-rgb_activity = {'lr':0.001,
- 'momentum':0.9,
- 'step_size':20,
- 'gamma':0.1,
- 'num_epochs':30,
- 'data_dir':'/home/shubham/Egocentric/dataset/GTEA/',
- 'features_2048_dir':'rgb_2048_features/',
- 'num_classes':7,
- 'batch_size':1,
- 'train_csv':'train_activity.csv',
- 'test_csv':'test_activity.csv',
- 'weights_dir':'weights/RGB/',
- 'plots_dir':'plots/RGB/',
- 'class_map':{'Cheese': 0, 'Coffee': 1, 'CofHoney': 2, 'Hotdog': 3, 'Pealate': 4, 'Peanut': 5, 'Tea': 6}
-}
 
 flow = {'mean':[0.5, 0.5, 0.5],
  'std':[1, 1, 1],
  'lr':0.001,
  'momentum':0.9,
  'step_size':200,
- 'gamma':1,
- 'num_epochs':5000,
- 'data_dir':'/home/shubham/Egocentric/dataset/GTea/',
+ 'gamma':0.1,
+ 'num_epochs':300,
+ 'data_dir':'/home/shubham/Egocentric/dataset/GTEA/',
  'num_classes':11,
- 'batch_size':128,
- 'train_csv':'train_label_Gtea_flow_11_classes.csv',
- 'test_csv':'test_label_Gtea_flow_11_classes.csv',
+ 'batch_size':64,
+ 'train_csv':'train_flow.csv',
+ 'test_csv':'test_flow.csv',
+ 'png_dir':'FusionSeg_flow_L1_stab/',
  'weights_dir':'weights/FLOW/',
- 'plots_dir':'plots/FLOW/'
+ 'plots_dir':'plots/FLOW/',
+ 'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10},
+ 'data_transforms' : {
+  'train': transforms.Compose([
+       transforms.Resize([300,300]),
+       transforms.RandomCrop(224),
+       transforms.ToTensor(),
+       transforms.Normalize([0.5, 0.5, 0.5],[1,1,1])
+       
+   ]),
+   'test': transforms.Compose([
+       transforms.Resize([224,224]),
+       transforms.ToTensor(),
+       transforms.Normalize([0.5, 0.5, 0.5],[1,1,1])
+   ]),
+  }
 }

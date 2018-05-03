@@ -1,4 +1,3 @@
-
 from __future__ import print_function, division
 import shutil
 import torch
@@ -16,6 +15,7 @@ import torch.utils.data as data
 import torch.nn.functional as F
 from config import GTEA as DATA 
 from utils.folder import SequencePreloader, NpySequencePreloader
+from utils.dataloader import DataLoader
 
 #Data statistics
 mean = DATA.rgb['mean']
@@ -58,6 +58,9 @@ class ResNet50Bottom(nn.Module):
         x = self.features(x)
         x = self.avg_pool(x)
         x = x.view(-1, sequence_length, 2048)
+        #print (x.size())
+        
+
         return x
 
 class LSTMNet(nn.Module):
@@ -67,16 +70,21 @@ class LSTMNet(nn.Module):
         self.rnn = nn.LSTM(input_size, hidden_size, 1, batch_first=True)
         self.out = nn.Linear(hidden_size, num_classes)
     
-    def forward(self, inp):
+    def forward(self, inp, lengths):
         x = self.rnn(inp)[0]
         x = x.permute(1,0,2)
         
         outputs = Variable(torch.zeros(x.size()[0], x.size()[1], num_classes)).cuda()
         for i in range(sequence_length):
             outputs[i] = self.out(x[i])
-         
-        outputs = outputs.mean(0)
-        return outputs
+        
+        outputs = outputs.permute(1,0,2)
+        outputs_mean = Variable(torch.zeros(outputs.size()[0], num_classes)).cuda()
+        for i in range(outputs.size()[0]):
+            outputs_mean[i] = outputs[i][0:lengths[i]].mean(dim=0)
+            
+            
+        return outputs_mean
 
 class Net(nn.Module):
     def __init__(self, model_conv, input_size, hidden_size):
@@ -84,13 +92,13 @@ class Net(nn.Module):
         self.resnet50Bottom = ResNet50Bottom(model_conv)
         self.lstmNet = LSTMNet(input_size, hidden_size)
         
-    def forward(self, inp, phase):
-        if phase == 'train':
+    def forward(self, inp, lengths, phase):
+        if phase == '':
             feature_sequence = self.resnet50Bottom(inp)
             outputs = self.lstmNet(feature_sequence)
             return outputs
         else:
-            outputs = self.lstmNet(inp)
+            outputs = self.lstmNet(inp, lengths)
             return outputs
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
@@ -123,13 +131,15 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             running_corrects = 0
             
             for data in dataloaders[phase]:
-                inputs, labels = data
+                inputs, lengths, labels = data
+                
                 inputs = Variable(inputs.cuda())
                 labels = Variable(labels.cuda())
-
+                
+                print (labels.size())
+                exit()
                 optimizer.zero_grad()
-
-                outputs = model(inputs, phase)
+                outputs = model(inputs, lengths, phase)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
 
@@ -175,28 +185,28 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     return model
     
 #Dataload and generator initialization
-sequence_datasets = {'train': SequencePreloader(mean, std, data_dir, png_dir, train_csv, class_map), 'test': NpySequencePreloader(data_dir, features_2048_dir, test_csv, class_map)}
-dataloaders = {x: torch.utils.data.DataLoader(sequence_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'test']}
+sequence_datasets = {'train': NpySequencePreloader(data_dir, features_2048_dir, train_csv, class_map, sequence_length), \
+                    'test': NpySequencePreloader(data_dir, features_2048_dir, test_csv, class_map, sequence_length)}
+
+dataloaders = {x: DataLoader(sequence_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'test']}
 dataset_sizes = {x: len(sequence_datasets[x]) for x in ['train', 'test']}
 class_names = sequence_datasets['train'].classes
 use_gpu = torch.cuda.is_available()
 
-
 file_name = __file__.split('/')[-1].split('.')[0]
 
 model_conv = torch.load(data_dir + weights_dir + 'weights_resnet_50_lr_0.001_momentum_0.9_step_size_7_gamma_1_num_classes_10_batch_size_128.pt')
-print(model_conv)
+#print(model_conv)
 for param in model_conv.parameters():
     param.requires_grad = False
     
 hidden_size = 512
 input_size = 2048
 model = Net(model_conv, input_size, hidden_size)
-print(model)
-
+#print (model)
+print (sequence_length)
 model = model.cuda()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.lstmNet.parameters(), lr=lr, momentum=momentum)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
 model = train_model(model, criterion, optimizer, exp_lr_scheduler, num_epochs=num_epochs)

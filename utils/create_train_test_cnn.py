@@ -4,15 +4,17 @@ sys.path.append('../config')
 from os import listdir
 import csv
 import GTEA as DATA
-class_map = DATA.rgb['class_map']
-
+#class_map = DATA.rgb['class_map']
+class_map = DATA.flow['class_map']
 label_dir = DATA.rgb['data_dir'] + DATA.rgb['label_dir']
 out_dir = DATA.rgb['data_dir']
 
 label_files = listdir(label_dir)
 
-w_train = csv.writer(open(out_dir + 'train.csv', 'w'))
-w_test = csv.writer(open(out_dir + 'test.csv', 'w'))
+#w_train = csv.writer(open(out_dir + 'train.csv', 'w'))
+#w_test = csv.writer(open(out_dir + 'test.csv', 'w'))
+w_train = csv.writer(open(out_dir + 'train_flow.csv', 'w'))
+w_test = csv.writer(open(out_dir + 'test_flow.csv', 'w'))
 
 
 for label_file in label_files:
