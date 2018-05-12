@@ -14,6 +14,7 @@ import skimage.io
 from scipy.ndimage import zoom
 from skimage.transform import resize
 import random 
+from os import listdir
 
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
@@ -88,7 +89,6 @@ class ImagePreloader(data.Dataset):
 
 
         shuffle(images_list)
-            
         classes, class_to_idx = class_map.keys(), class_map
         imgs = make_dataset(root, images_list, class_to_idx)
         if len(imgs) == 0:
@@ -120,6 +120,51 @@ class ImagePreloader(data.Dataset):
             target = self.target_transform(target)
 
         return img, target
+    
+    def __len__(self):
+        return len(self.imgs)
+
+class VideoPreloader(data.Dataset):
+
+    def __init__(self, root, video, class_map, transform=None, target_transform=None,
+                 loader=default_loader):
+                     
+        pngs=listdir(root+video+'/')
+        images_list = []
+        for png in pngs:
+            images_list.append(root+video+'/'+png)
+     
+        shuffle(images_list)
+        #classes, class_to_idx = class_map.keys(), class_map
+        imgs = images_list
+        if len(imgs) == 0:
+            raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
+                               "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
+
+        self.root = root
+        self.imgs = imgs
+        self.video=video
+        #self.classes = classes
+        #self.class_to_idx = class_to_idx
+        self.transform = transform
+        self.target_transform = target_transform
+        self.loader = loader
+
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is class_index of the target class.
+        """
+        path = self.imgs[index]
+        img = self.loader(path)
+        if self.transform is not None:
+            img = self.transform(img)
+        video_path=self.root+self.video+'/'
+        return img, video_path
     
     def __len__(self):
         return len(self.imgs)

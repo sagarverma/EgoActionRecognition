@@ -2,6 +2,7 @@ import sys
 sys.path.insert(0, '/home/shubham/GTEA/codes/ego_action_recognition/')
 import shutil
 import torch
+from os import listdir
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
@@ -17,33 +18,31 @@ import torch.nn.functional as F
 from config import GTEA as DATA 
 from utils.folder import ImagePreloader
 from utils.folder import VideoPreloader
-from os import listdir
-
 #Data statistics
-mean = DATA.rgb['mean']
-std = DATA.rgb['std']
-num_classes = DATA.rgb['num_classes']
-class_map = DATA.rgb['class_map']
+mean = DATA.flow['mean']
+std = DATA.flow['std']
+num_classes = DATA.flow['num_classes']
+class_map = DATA.flow['class_map']
 
 #Training parameters
-lr = DATA.rgb['lr']
-momentum = DATA.rgb['momentum']
-step_size = DATA.rgb['step_size']
-gamma = DATA.rgb['gamma']
-num_epochs = DATA.rgb['num_epochs']
-batch_size = DATA.rgb['batch_size']
-data_transforms= DATA.rgb['data_transforms']
+lr = DATA.flow['lr']
+momentum = DATA.flow['momentum']
+step_size = DATA.flow['step_size']
+gamma = DATA.flow['gamma']
+num_epochs = DATA.flow['num_epochs']
+batch_size = DATA.flow['batch_size']
+data_transforms= DATA.flow['data_transforms']
 
 #Directory names
-data_dir = DATA.rgb['data_dir']
-png_dir = DATA.rgb['png_dir']
-features_2048_dir = DATA.rgb['features_2048_dir']
-weights_dir = DATA.rgb['weights_dir']
-plots_dir = DATA.rgb['plots_dir']
+data_dir = DATA.flow['data_dir']
+png_dir = DATA.flow['png_dir']
+features_2048_dir = DATA.flow['features_2048_dir']
+weights_dir = DATA.flow['weights_dir']
+plots_dir = DATA.flow['plots_dir']
 
 #csv files
-train_csv = DATA.rgb['train_csv']
-test_csv = DATA.rgb['test_csv']
+train_csv = DATA.flow['train_csv']
+test_csv = DATA.flow['test_csv']
 
 class ResNet50Bottom(nn.Module):
     """
@@ -52,7 +51,7 @@ class ResNet50Bottom(nn.Module):
     def __init__(self, original_model):
         super(ResNet50Bottom, self).__init__()
         self.features = nn.Sequential(*list(original_model.children())[:-2])
-        self.avg_pool = nn.AvgPool2d(10,1)
+        self.avg_pool = nn.AvgPool2d(7,1)
 
     def forward(self, x):
         #print (x.size())
@@ -73,6 +72,7 @@ class Net(nn.Module):
             #outputs = self.lstmNet(feature_sequence)
             return outputs
         
+    
 videos=listdir(data_dir+png_dir)
 for video in videos:
     image_datasets=VideoPreloader(data_dir+png_dir, video, class_map, data_transforms['test'])
@@ -81,8 +81,7 @@ for video in videos:
     #print (np.shape(image_datasets[0][0]), (image_datasets[0][1]))
     use_gpu = torch.cuda.is_available()
     file_name = __file__.split('/')[-1].split('.')[0]
-
-    model_conv = torch.load(data_dir + weights_dir + 'weights_rgb_cnn_lr_0.001_momentum_0.9_step_size_7_gamma_1_num_classes_10_batch_size_128.pt')
+    model_conv = torch.load(data_dir + weights_dir + 'weights_flow_cnn_lr_0.001_momentum_0.9_step_size_200_gamma_0.1_num_classes_11_batch_size_64.pt')
     for param in model_conv.parameters():
         param.requires_grad = False
         
@@ -107,6 +106,3 @@ for video in videos:
     path=data_dir+features_2048_dir+video+'.npy'
     print (path)
     np.save(path, video_feature)
-        
-
-
