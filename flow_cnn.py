@@ -13,6 +13,7 @@ import os
 from config import GTEA as DATA
 from utils.folder import ImagePreloader
 import random
+use_gpu = torch.cuda.is_available()
 
 #Data statistics
 mean = DATA.flow['mean']
@@ -142,7 +143,6 @@ image_datasets = {'train': ImagePreloader(data_dir + png_dir, data_dir + train_c
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'test']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
 class_names = image_datasets['train'].classes
-use_gpu = torch.cuda.is_available()
 
 file_name = __file__.split('/')[-1].split('.')[0]
 

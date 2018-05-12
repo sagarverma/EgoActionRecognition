@@ -30,13 +30,10 @@ gamma = DATA.rgb['gamma']
 num_epochs = DATA.rgb['num_epochs']
 batch_size = DATA.rgb['batch_size']
 data_transforms= DATA.rgb['data_transforms']
-
-#Directory names
+png_dir=DATA.rgb['png_dir']
 data_dir = DATA.rgb['data_dir']
 weights_dir = DATA.rgb['weights_dir']
 plots_dir = DATA.rgb['plots_dir']
-
-#csv files
 train_csv = DATA.rgb['train_csv']
 test_csv = DATA.rgb['test_csv']
 
@@ -94,7 +91,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
                     inputs, labels = Variable(inputs), Variable(labels)
 
                 optimizer.zero_grad()
-
                 outputs = model(inputs)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
@@ -103,8 +99,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
                     loss.backward()
                     optimizer.step()
 
-                running_loss += loss.data[0]
-                running_corrects += torch.sum(preds == labels.data)
+                running_loss += loss.item()
+                running_corrects += torch.sum(preds == labels.data).item()
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects / dataset_sizes[phase]
@@ -139,12 +135,11 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
 
 
 #Dataload and generator initialization
-image_datasets = {'train': ImagePreloader(data_dir + 'pngs/', data_dir + train_csv, class_map, data_transforms['train']), 
-                    'test': ImagePreloader(data_dir + 'pngs/', data_dir + test_csv, class_map, data_transforms['test'])}
+image_datasets = {'train': ImagePreloader(data_dir + png_dir, data_dir + train_csv, class_map, data_transforms['train']), 
+                    'test': ImagePreloader(data_dir + png_dir, data_dir + test_csv, class_map, data_transforms['test'])}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'test']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
 class_names = image_datasets['train'].classes
-
 file_name = __file__.split('/')[-1].split('.')[0]
 
 #Create model and initialize/freeze weights
