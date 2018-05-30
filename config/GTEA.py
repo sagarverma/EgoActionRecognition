@@ -24,7 +24,7 @@ rgb = {
        transforms.Resize(300),
        transforms.ToTensor(),
        transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
-       
+
    ]),
    'test': transforms.Compose([
        transforms.CenterCrop(224),
@@ -33,6 +33,22 @@ rgb = {
        transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
    ]),
   }
+}
+
+rgb_lstm = {
+    'lr': 0.01,
+    'momentum': 0.9,
+    'step_size': 20,
+    'gamma': 1,
+    'num_epochs': 500,
+    'data_dir': '../../dataset/',
+    'png_dir': 'pngs/',
+    'num_classes': 11,
+    'batch_size': 32,
+    'sequence_length': 11,
+    'train_csv': 'train_rgb_lstm.csv',
+    'test_csv': 'test_rgb_lstm.csv',
+    'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
 flow = {'mean': [0.5, 0.5, 0.5],
@@ -56,7 +72,7 @@ flow = {'mean': [0.5, 0.5, 0.5],
        transforms.RandomCrop(224),
        transforms.ToTensor(),
        transforms.Normalize([0.5, 0.5, 0.5],[1,1,1])
-       
+
    ]),
    'test': transforms.Compose([
        transforms.Resize([224,224]),
