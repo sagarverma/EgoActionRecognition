@@ -15,6 +15,7 @@ from config import GTEA as DATA
 from utils.folder import ImagePreloader
 
 use_gpu = torch.cuda.is_available()
+DEVICE = 1
 
 #Data statistics
 mean = DATA.rgb['mean']
@@ -33,7 +34,6 @@ data_transforms= DATA.rgb['data_transforms']
 png_dir=DATA.rgb['png_dir']
 data_dir = DATA.rgb['data_dir']
 weights_dir = DATA.rgb['weights_dir']
-plots_dir = DATA.rgb['plots_dir']
 train_csv = DATA.rgb['train_csv']
 test_csv = DATA.rgb['test_csv']
 
@@ -85,14 +85,15 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             for data in dataloaders[phase]:
                 inputs, labels = data
                 if use_gpu:
-                    inputs = Variable(inputs.cuda())
-                    labels = Variable(labels.cuda())
+                    inputs = Variable(inputs.cuda(DEVICE))
+                    labels = Variable(labels.cuda(DEVICE))
                 else:
                     inputs, labels = Variable(inputs), Variable(labels)
 
                 optimizer.zero_grad()
                 outputs = model(inputs)
                 _, preds = torch.max(outputs.data, 1)
+                
                 loss = criterion(outputs, labels)
 
                 if phase == 'train':
@@ -115,11 +116,11 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
                 test_acc.append(epoch_acc)
                 print (" {} loss = {}, acc = {},".format(phase, epoch_loss, epoch_acc))
                 print ('##############################################################')
-
+                
 
             if phase == 'test' and epoch_acc > best_acc:
                 best_acc = epoch_acc
-                torch.save(model, data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                torch.save(model, weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) + '.pt')
             
@@ -149,7 +150,7 @@ for param in model_conv.parameters():
 model_conv = ResNet50Bottom(model_conv)
 
 if use_gpu:
-    model_conv = model_conv.cuda()
+    model_conv = model_conv.cuda(DEVICE)
 
 #Initialize optimizer and loss function
 criterion = nn.CrossEntropyLoss()
