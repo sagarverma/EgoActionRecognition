@@ -1,20 +1,18 @@
-import torch.utils.data as data
-import torch
 import sys
+import os, csv, random
+
 from PIL import Image
-import os
-import os.path
-import csv
-from random import shuffle
 import numpy as np
-import random
-from torchvision.transforms import functional
-from torch.autograd import Variable
+
 import skimage.io
 from scipy.ndimage import zoom
 from skimage.transform import resize
-import random
-from os import listdir
+
+import torch
+import torch.utils.data as data
+from torch.autograd import Variable
+
+from torchvision.transforms import functional
 
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm']
@@ -55,10 +53,10 @@ def make_sequence_dataset(dir, sequences_list):
 
     for sequence in sequences_list:
         images = []
-        for image in sequence:
+        for image in sequence[0]:
             images.append(dir + image)
 
-        sequences.append([images, int(sequences_list[1])])
+        sequences.append([images, int(sequence[1])])
 
     return sequences
 
@@ -77,7 +75,7 @@ def npy_seq_loader(seq):
 
     return out
 
-def sequence_loader(paths, mean, std, inp_size, rand_crop_size, resize_size):
+def rgb_sequence_loader(paths, mean, std, inp_size, rand_crop_size, resize_size):
     irand = random.randint(0, inp_size[0] - rand_crop_size[0])
     jrand = random.randint(0, inp_size[1] - rand_crop_size[1])
     flip = random.random()
@@ -88,6 +86,26 @@ def sequence_loader(paths, mean, std, inp_size, rand_crop_size, resize_size):
         img = functional.center_crop(img, (inp_size[0], inp_size[1]))
         img = functional.crop(img, irand, jrand, rand_crop_size[0], rand_crop_size[1])
         img = functional.resize(img, resize_size)
+        if flip < 0.5:
+            img = functional.hflip(img)
+        tensor = functional.to_tensor(img)
+        tensor = functional.normalize(tensor, mean, std)
+        batch.append(tensor)
+
+    batch = torch.stack(batch)
+
+    return batch
+
+def flow_sequence_loader(paths, mean, std, inp_size, rand_crop_size, resize_size):
+    irand = random.randint(0, inp_size[0] - rand_crop_size[0])
+    jrand = random.randint(0, inp_size[1] - rand_crop_size[1])
+    flip = random.random()
+    batch = []
+    for path in paths:
+        img = Image.open(path)
+        img = img.convert('RGB')
+        img = functional.resize(img, resize_size)
+        img = functional.crop(img, irand, jrand, rand_crop_size[0], rand_crop_size[1])
         if flip < 0.5:
             img = functional.hflip(img)
         tensor = functional.to_tensor(img)
@@ -128,7 +146,7 @@ class ImagePreloader(data.Dataset):
             images_list.append([row[0],row[1]])
 
 
-        shuffle(images_list)
+        random.shuffle(images_list)
         classes, class_to_idx = class_map.keys(), class_map
         imgs = make_dataset(root, images_list, class_to_idx)
         if len(imgs) == 0:
@@ -167,7 +185,7 @@ class ImagePreloader(data.Dataset):
 
 class SequencePreloader(data.Dataset):
 
-    def __init__(self, root, csv_file, sequence_length, mean, std, inp_size, rand_crop_size, resize_size):
+    def __init__(self, root, csv_file, mean, std, inp_size, rand_crop_size, resize_size):
 
         r = csv.reader(open(csv_file, 'r'), delimiter=',')
 
@@ -176,13 +194,16 @@ class SequencePreloader(data.Dataset):
         for row in r:
             sequences_list.append([row[0:-1],row[-1]])
 
-        shuffle(sequences_list)
+        random.shuffle(sequences_list)
         sequences = make_sequence_dataset(root, sequences_list)
 
 
         self.root = root
         self.sequences = sequences
-        self.loader = sequence_loader
+        if 'flow' in root:
+            self.loader = flow_sequence_loader
+        else:
+            self.loader = rgb_sequence_loader
         self.mean = mean
         self.std = std
         self.inp_size = inp_size
@@ -201,14 +222,14 @@ class SequencePreloader(data.Dataset):
         sequence = self.loader(paths, self.mean, self.std, self.inp_size, self.rand_crop_size, self.resize_size)
         return sequence, target
 
-        return img, target
+        return sequence, target
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.sequences)
 
 class NpySequencePreloader(data.Dataset):
 
-    def __init__(self, root, features_dir, csv_file):
+    def __init__(self, root, csv_file):
 
         r = csv.reader(open(root + csv_file, 'r'), delimiter=',')
 
@@ -216,7 +237,7 @@ class NpySequencePreloader(data.Dataset):
         for row in r:
             sequence_list.append([row[0:-1], int(row[-1])])
 
-        seqs = make_seq_dataset(root + features_dir, sequence_list)
+        sequences = make_sequence_dataset(root, sequence_list)
 
         self.root = root
         self.sequences = sequences
@@ -229,6 +250,9 @@ class NpySequencePreloader(data.Dataset):
         Returns:
             tuple: (image, target) where target is class_index of the target class.
         """
-        paths, target = self.seqs[index]
+        paths, target = self.sequences[index]
         seq = self.loader(paths)
         return seq, target
+
+    def __len__(self):
+        return len(self.sequences)

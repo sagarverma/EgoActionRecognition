@@ -15,7 +15,8 @@ import torch.utils.data as data
 import torch.nn.functional as F
 from config import GTEA as DATA
 from utils.folder import SequencePreloader, NpySequencePreloader
-from utils.dataloader import DataLoader
+
+DEVICE = 1
 
 #Data statistics
 mean = DATA.rgb['mean']
@@ -37,6 +38,7 @@ data_transforms= DATA.rgb['data_transforms']
 data_dir = DATA.rgb['data_dir']
 png_dir = DATA.rgb['png_dir']
 weights_dir = DATA.rgb['weights_dir']
+features_2048_dir = DATA.rgb_lstm['features_2048_dir']
 
 #csv files
 train_csv = DATA.rgb_lstm['train_csv']
@@ -55,8 +57,7 @@ class ResNet50Bottom(nn.Module):
         x = x.view(-1, 3, 300, 300)
         x = self.features(x)
         x = self.avg_pool(x)
-        x = x.view(-1, sequence_length, 2048)
-        #print (x.size())
+        x = x.view(-1, 2048)
         return x
 
 class LSTMNet(nn.Module):
@@ -66,19 +67,13 @@ class LSTMNet(nn.Module):
         self.rnn = nn.LSTM(input_size, hidden_size, 1, batch_first=True)
         self.out = nn.Linear(hidden_size, num_classes)
 
-    def forward(self, inp, lengths):
+    def forward(self, inp):
         x = self.rnn(inp)[0]
-        x = x.permute(1,0,2)
+        outputs = self.out(x)
 
-        outputs = Variable(torch.zeros(x.size()[0], x.size()[1], num_classes)).cuda()
-        for i in range(sequence_length):
-            outputs[i] = self.out(x[i])
-
-        outputs = outputs.permute(1,0,2)
-        outputs_mean = Variable(torch.zeros(outputs.size()[0], num_classes)).cuda()
+        outputs_mean = Variable(torch.zeros(outputs.size()[0], num_classes)).cuda(DEVICE)
         for i in range(outputs.size()[0]):
-            outputs_mean[i] = outputs[i][0:lengths[i]].mean(dim=0)
-
+            outputs_mean[i] = outputs[i].mean(dim=0)
 
         return outputs_mean
 
@@ -88,19 +83,23 @@ class Net(nn.Module):
         self.resnet50Bottom = ResNet50Bottom(model_conv)
         self.lstmNet = LSTMNet(input_size, hidden_size)
 
-    def forward(self, inp, lengths, phase):
+    def forward(self, inp, phase):
         if phase == 'train':
-            feature_sequence = []
+            features = []
+
+            batch_size = inp.size()[0]
+            sequence_length = inp.size()[1]
 
             inp = inp.view(-1, 3, 300, 300)
-            for i in range(inp.size()[0], 128):
-                feature_sequence.append(self.resnet50Bottom(inp[i:i+batch_size]))
+            for i in range(0, inp.size()[0], 128):
+                features.append(self.resnet50Bottom(inp[i:i+128]))
 
-            features_sequence = feature_sequence.view(batch_size, sequence_length, 2048)
+            feature_sequence = torch.cat(features, dim=0)
+            feature_sequence = feature_sequence.view(batch_size, sequence_length, 2048)
             outputs = self.lstmNet(feature_sequence)
             return outputs
         else:
-            outputs = self.lstmNet(inp, lengths)
+            outputs = self.lstmNet(inp)
             return outputs
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
@@ -116,6 +115,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
     train_acc = []
     test_acc = []
     test_loss = []
+
 
     for epoch in range(0,num_epochs):
 
@@ -133,15 +133,13 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             running_corrects = 0
 
             for data in dataloaders[phase]:
-                inputs, lengths, labels = data
+                inputs, labels = data
 
-                inputs = Variable(inputs.cuda())
-                labels = Variable(labels.cuda())
+                inputs = Variable(inputs.cuda(DEVICE))
+                labels = Variable(labels.cuda(DEVICE))
 
-                print (labels.size())
-                exit()
                 optimizer.zero_grad()
-                outputs = model(inputs, lengths, phase)
+                outputs = model(inputs, phase)
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
 
@@ -150,10 +148,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
                     optimizer.step()
 
                 running_loss += loss.data[0]
-                running_corrects += torch.sum(preds == labels.data)
+                running_corrects += torch.sum(preds == labels.data)[0].cpu().numpy()
 
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects / dataset_sizes[phase]
+            epoch_loss = running_loss / (dataset_sizes[phase] * 1.0)
+            epoch_acc = running_corrects / (dataset_sizes[phase] * 1.0)
 
             if phase=='train':
                 train_loss.append(epoch_loss)
@@ -170,7 +168,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
             if phase == 'test' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 print ('saving model.....')
-                torch.save(model, data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+                torch.save(model,weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_seq_length_' + str(sequence_length) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) + '.pt')
         print()
@@ -180,20 +178,19 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
         time_elapsed // 60, time_elapsed % 60))
     print('Best test Acc: {:4f}'.format(best_acc))
 
-    model = torch.load(data_dir + weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
+    model = torch.load(weights_dir + 'weights_'+ file_name + '_lr_' + str(lr) + '_momentum_' + str(momentum) + '_step_size_' + \
                         str(step_size) + '_gamma_' + str(gamma) + '_seq_length_' + str(sequence_length) + '_num_classes_' + str(num_classes) + \
                         '_batch_size_' + str(batch_size) + '.pt')
 
     return model
 
 #Dataload and generator initialization
-sequence_datasets = {'train': SequencePreloader(data_dir, png_dir, train_csv, class_map, sequence_length), \
-                    'test': NpySequencePreloader(data_dir, features_2048_dir, test_csv, class_map, sequence_length)}
+sequence_datasets = {'train': SequencePreloader(data_dir + png_dir, data_dir + train_csv, mean, std, [280, 450], [224, 224], 300), \
+                    'test': NpySequencePreloader(data_dir + features_2048_dir, data_dir + test_csv)}
 
-dataloaders = {x: DataLoader(sequence_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'test']}
+dataloaders = {x: torch.utils.data.DataLoader(sequence_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'test']}
 dataset_sizes = {x: len(sequence_datasets[x]) for x in ['train', 'test']}
-class_names = sequence_datasets['train'].classes
-use_gpu = torch.cuda.is_available()
+
 
 file_name = __file__.split('/')[-1].split('.')[0]
 
@@ -206,7 +203,7 @@ hidden_size = 512
 input_size = 2048
 model = Net(model_conv, input_size, hidden_size)
 #print (model)
-model = model.cuda()
+model = model.cuda(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.lstmNet.parameters(), lr=lr, momentum=momentum)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)

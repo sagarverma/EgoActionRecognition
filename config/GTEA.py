@@ -36,18 +36,19 @@ rgb = {
 }
 
 rgb_lstm = {
-    'lr': 0.01,
+    'lr': 0.001,
     'momentum': 0.9,
     'step_size': 20,
     'gamma': 1,
     'num_epochs': 500,
     'data_dir': '../../dataset/',
+    'features_2048_dir': 'rgb_2048_features/',
     'png_dir': 'pngs/',
     'num_classes': 11,
-    'batch_size': 32,
+    'batch_size': 128,
     'sequence_length': 11,
-    'train_csv': 'train_rgb_lstm.csv',
-    'test_csv': 'test_rgb_lstm.csv',
+    'train_csv': 'train_lstm.csv',
+    'test_csv': 'test_lstm.csv',
     'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
@@ -80,4 +81,21 @@ flow = {'mean': [0.5, 0.5, 0.5],
        transforms.Normalize([0.5, 0.5, 0.5],[1,1,1])
    ]),
   }
+}
+
+flow_lstm = {
+    'lr': 0.01,
+    'momentum': 0.9,
+    'step_size': 20,
+    'gamma': 1,
+    'num_epochs': 500,
+    'data_dir': '../../dataset/',
+    'features_2048_dir': 'flow_2048_features/',
+    'png_dir': 'flows/',
+    'num_classes': 11,
+    'batch_size': 128,
+    'sequence_length': 11,
+    'train_csv': 'train_lstm.csv',
+    'test_csv': 'test_lstm.csv',
+    'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
