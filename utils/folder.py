@@ -60,6 +60,21 @@ def make_sequence_dataset(dir, sequences_list):
 
     return sequences
 
+def make_bimode_sequence_dataset(rgb_dir, flow_dir, sequences_list):
+    sequences = []
+
+    for sequence in sequences_list:
+        rgb_images = []
+        flow_images = []
+
+        for image in sequence[0]:
+            rgb_images.append(rgb_dir + image)
+            flow_images.append(flow_dir + image)
+
+        sequences.append([rgb_images, flow_images, int(sequence[1])])
+
+    return sequences
+
 def pil_loader(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
     with open(path, 'rb') as f:
@@ -220,7 +235,6 @@ class SequencePreloader(data.Dataset):
         """
         paths, target = self.sequences[index]
         sequence = self.loader(paths, self.mean, self.std, self.inp_size, self.rand_crop_size, self.resize_size)
-        return sequence, target
 
         return sequence, target
 
@@ -252,7 +266,84 @@ class NpySequencePreloader(data.Dataset):
         """
         paths, target = self.sequences[index]
         seq = self.loader(paths)
+
         return seq, target
 
     def __len__(self):
         return len(self.sequences)
+
+class BiModeSequencePreloader(data.Dataset):
+
+    def __init__(self, rgb_param, flow_param):
+
+        r = csv.reader(open(rgb_param[1], 'r'), delimiter=',')
+
+        sequences_list = []
+
+        for row in r:
+            sequences_list.append([row[0:-1],row[-1]])
+
+        random.shuffle(sequences_list)
+        bimode_sequences = make_bimode_sequence_dataset(rgb_param[0], flow_param[0], sequences_list)
+
+        self.bimode_sequences = bimode_sequences
+        self.flow_loader = flow_sequence_loader
+        self.rgb_loader = rgb_sequence_loader
+        self.rgb_mean = rgb_param[2]
+        self.flow_mean = flow_param[2]
+        self.rgb_std = rgb_param[3]
+        self.flow_std = flow_param[3]
+        self.rgb_inp_size = rgb_param[4]
+        self.flow_inp_size = flow_param[4]
+        self.rgb_rand_crop_size = rgb_param[5]
+        self.flow_rand_crop_size = flow_param[5]
+        self.rgb_resize_size = rgb_param[6]
+        self.flow_resize_size = flow_param[6]
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is class_index of the target class.
+        """
+        rgb_paths, flow_paths, target = self.bimode_sequences[index]
+        rgb_sequence = self.rgb_loader(rgb_paths, self.rgb_mean, self.rgb_std, self.rgb_inp_size, self.rgb_rand_crop_size, self.rgb_resize_size)
+        flow_sequence = self.flow_loader(flow_paths, self.flow_mean, self.flow_std, self.flow_inp_size, self.flow_rand_crop_size, self.flow_resize_size)
+
+        return rgb_sequence, flow_sequence, target
+
+    def __len__(self):
+        return len(self.bimode_sequences)
+
+class BiModeNpySequencePreloader(data.Dataset):
+
+    def __init__(self, rgb_param, flow_param):
+
+        r = csv.reader(open(rgb_param[1], 'r'), delimiter=',')
+
+        sequence_list = []
+        for row in r:
+            sequence_list.append([row[0:-1], int(row[-1])])
+
+        bimode_sequences = make_bimode_sequence_dataset(rgb_param[0], flow_param[0], sequence_list)
+
+        self.bimode_sequences = bimode_sequences
+        self.loader = npy_seq_loader
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (image, target) where target is class_index of the target class.
+        """
+        rgb_paths, flow_paths, target = self.bimode_sequences[index]
+        rgb_seq = self.loader(rgb_paths)
+        flow_seq = self.loader(flow_paths)
+
+        return rgb_seq, flow_seq, target
+
+    def __len__(self):
+        return len(self.bimode_sequences)
