@@ -52,6 +52,22 @@ rgb_lstm = {
     'class_map': {'x':0, 'bg':0, 'fold':1, 'pour':2, 'put':3, 'scoop':4, 'shake':5, 'spread':6, 'stir':7, 'take':8, 'open': 9, 'close':10}
 }
 
+rgb_sim = {
+    'lr': 0.001,
+    'momentum': 0.9,
+    'step_size': 20,
+    'gamma': 1,
+    'num_epochs': 500,
+    'data_dir': '../../dataset/',
+    'features_2048x10x10_dir': 'rgb_2048x10x10_features/',
+    'weights_dir': '../../weights/',
+    'num_classes': 2,
+    'batch_size': 128,
+    'train_csv': 'train_sim.csv',
+    'test_csv': 'test_sim.csv',
+    'class_map': {'sim':0, 'dsim':1}
+}
+
 flow = {'mean': [0.5, 0.5, 0.5],
  'std': [1, 1, 1],
  'lr': 0.001,
