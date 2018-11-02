@@ -21,7 +21,6 @@ for label in label_files:
                     #print ([label[:-4]+'/'+str(item).zfill(10)+'.png' for item in range(i,i+sequence_length)]+[class_map[row[0]]])
                     w_train.writerow([label[:-4] + '/'+str(item).zfill(10) + '.png' for item in range(i,i + sequence_length)] + [class_map[row[0]]])
 
-
 for label in label_files:
     if 'S4' in label:
         r = csv.reader(open(label_dir + label, 'r'), delimiter = ' ')

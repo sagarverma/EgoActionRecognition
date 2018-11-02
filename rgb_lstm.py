@@ -32,7 +32,7 @@ gamma = DATA.rgb_lstm['gamma']
 num_epochs = DATA.rgb_lstm['num_epochs']
 batch_size = DATA.rgb_lstm['batch_size']
 sequence_length = DATA.rgb_lstm['sequence_length']
-data_transforms= DATA.rgb['data_transforms']
+data_transforms= DATA.rgb_lstm['data_transforms']
 
 #Directory names
 data_dir = DATA.rgb['data_dir']
@@ -137,7 +137,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=2000):
 
                 inputs = Variable(inputs.cuda(DEVICE))
                 labels = Variable(labels.cuda(DEVICE))
-
+        
                 optimizer.zero_grad()
                 outputs = model(inputs, phase)
                 _, preds = torch.max(outputs.data, 1)

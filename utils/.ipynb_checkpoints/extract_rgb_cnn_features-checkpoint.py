@@ -236,7 +236,7 @@ for i in range(7):
 GT = gt_temp
 action_class_map = {'x':'A', 'bg':'B', 'fold':'C', 'pour':'D', 'put':'E', 'scoop':'F', 'shake':'G', 'spread':'H', 'stir':'I', 'take':'J', 'open': 'K', 'close':'L'}
 for video in videos:
-    if 'npy' in video and 'S4' in video:
+    if 'npy' in video and 'S4' not in video:
         print (video[:-20])
         data = np.load(soc_path + video)
         label = data[:,1]
