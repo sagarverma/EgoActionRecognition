@@ -45,5 +45,5 @@ Please cite the following paper if you find this repository useful.
 ## Contact
 For any queries, please contact
 ```
-Sagar Verma: sagar15056(.at.)iiitd.ac.in
+Sagar Verma: sagar15056@iiitd.ac.in
 ```
