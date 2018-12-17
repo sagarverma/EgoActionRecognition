@@ -11,7 +11,7 @@ The code has been tested on:
 - Opencv 3.0
 
 ## Poster
-<img src="https://sagarverma.github.io/others/ICIP_ego.pdf">
+<img src="https://sagarverma.github.io/others/ICIP_ego.jpg">
 
 ## Preprocessed dataset
 
@@ -25,7 +25,7 @@ The code has been tested on:
 
 ## Publication
 
-S. Verma, P. Nagar, D. Gupta, and C. Arora, &quot;Making third person techniques recognize first-person actions in egocentric videos.&quot; <i>International Conference on Image Processing (**ICIP**)</i> [PDF] (https://sagarverma.github.io/others/icip18-ego-actions.pdf) [Poster] (https://sagarverma.github.io/others/ICIP_ego.pdf)
+S. Verma, P. Nagar, D. Gupta, and C. Arora, &quot;Making third person techniques recognize first-person actions in egocentric videos.&quot; <i>International Conference on Image Processing (**ICIP**)</i> [PDF](https://sagarverma.github.io/others/icip18-ego-actions.pdf) [Poster](https://sagarverma.github.io/others/ICIP_ego.pdf)
 
 
 ## Citation
