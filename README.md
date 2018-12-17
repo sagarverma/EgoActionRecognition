@@ -1,11 +1,11 @@
-# Code for the paper "Making third person techniques recognize first-person actions in egocentric videos" (ICIP2018)
+# Code for the paper "Making Third Person Techniques Recognize First-Person Actions in Egocentric Videos" (ICIP 2018)
 
-This is the github repository containing the code for the paper ["Making third person techniques recognize first-person actions in egocentric videos"](https://sagarverma.github.io/others/icip18-ego-actions.pdf) by Sagar Verma, Pravin Nagar, Divam Gupta, and Chetan Arora.
+This is the github repository containing the code for the paper ["Making Third Person Techniques Recognize First-Person Actions in Egocentric Videos"](https://sagarverma.github.io/others/icip18-ego-actions.pdf) by Sagar Verma, Pravin Nagar, Divam Gupta, and Chetan Arora.
 
 ## Requirements
 The code has been tested on:
 
-- Nvidia P500
+- Nvidia P5000 GPU
 - Ubuntu 16.04 LTS
 - [Pytorch](https://pytorch.org/) v0.4.0
 - Opencv 3.0
