@@ -33,9 +33,9 @@ Please cite the following paper if you find this repository useful.
 ```
 @article{Sagar2018ego,
   author      = {Sagar Verma and
-                  Pravin Nagar and
-                  Divam Gupta and
-                  Chetan Arora},
+                 Pravin Nagar and
+                 Divam Gupta and
+                 Chetan Arora},
   title       = {Making Third Person Techniques Recognize First-Person Actions in Egocentric Videos},
   booktitle   = {ICIP},
   year        = {2018}
